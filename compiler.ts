@@ -21,10 +21,10 @@ export function compile(source: string) : CompileResult {
         break;
     }
   }); 
-  const scratchVar : string = `(local $$last i32)`;
+  const scratchVar : string = `(local $$last i64)`;
   const localDefines = [scratchVar];
   definedVars.forEach(v => {
-    localDefines.push(`(local $${v} i32)`);
+    localDefines.push(`(local $${v} i64)`);
   })
   
   const commandGroups = ast.map((stmt) => codeGen(stmt));
@@ -49,11 +49,11 @@ function codeGen(stmt: Stmt) : Array<string> {
 function codeGenOp(op: string) : Array<string> {
   switch (op) {
     case "+":
-      return [`(i32.add)`];
+      return [`(i64.add)`];
     case "-":
-      return [`(i32.sub)`];
+      return [`(i64.sub)`];
     case "*":
-      return [`(i32.mul)`];
+      return [`(i64.mul)`];
   }
 }
 
@@ -63,8 +63,14 @@ function codeGenExpr(expr : Expr) : Array<string> {
     case "builtin1":
       const argStmts = codeGenExpr(expr.arg);
       return argStmts.concat([`(call $${expr.name})`]);
+    case "bool":
+      if (expr.value == true) {
+	return ["(i64.const " + ((BigInt(1)<<BigInt(62)) + BigInt(1)).toString() + ")"];
+      } else {
+	return ["(i64.const " + ((BigInt(1)<<BigInt(62)) + BigInt(0)).toString() + ")"];
+      }
     case "num":
-      return ["(i32.const " + expr.value + ")"];
+      return ["(i64.const " + expr.value + ")"];
     case "id":
       return [`(local.get $${expr.name})`];
     case "binExp":

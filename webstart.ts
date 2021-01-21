@@ -8,16 +8,31 @@ function webStart() {
     var importObject = {
       imports: {
         print: (arg : any) => {
-          console.log("Logging from WASM: ", arg);
+	  console.log(arg);
+	  var processedArg = arg;
+	  console.log(typeof arg);
+	  
+	  if ((arg & BigInt(1<<63)) != BigInt(0)) {
+	    console.log("Found boolean type in print function");
+	    const mask = ((BigInt(1)<<BigInt(62))-BigInt(1));
+	    const boolVal = Number(arg & mask);
+	    console.log("boolVal " + boolVal.toString());
+	    if (boolVal == 0) {
+	      processedArg = "False";
+	    } else {
+	      processedArg = "True";
+	    }
+	  }
+	  
+          console.log("Logging from WASM: ", processedArg);
           const elt = document.createElement("pre");
           document.getElementById("output").appendChild(elt);
-          elt.innerText = arg;
+          elt.innerText = processedArg;
           return arg;
         },
         abs: (arg : any) => {
           return Math.abs(arg);
         },
-	
         max: (arg1 : any, arg2 : any) => {
 	  return arg1 > arg2 ? arg1 : arg2;
         },

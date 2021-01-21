@@ -2,10 +2,24 @@
 
 import {parser} from "lezer-python";
 import {TreeCursor} from "lezer-tree";
+import { Expression } from "typescript";
 import {Expr, Stmt} from "./ast";
 
 export function traverseExpr(c : TreeCursor, s : string) : Expr {
   switch(c.type.name) {
+    case "Boolean":
+      var value = false;
+      
+      if (s.substring(c.from, c.to) == "True") {
+        value = true;
+      } else if (s.substring(c.from, c.to) == "True") {
+        value = false;
+      }
+
+      return {
+        tag: "bool",
+        value: value
+      }
     case "Number":
       return {
         tag: "num",
@@ -67,6 +81,7 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr {
       };
       
     default:
+      console.log(c);
       throw new Error("Could not parse expr at " + c.from + " " + c.to + ": " + s.substring(c.from, c.to));
   }
 }
@@ -75,13 +90,20 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
   switch(c.node.type.name) {
     case "AssignStatement":
       c.firstChild(); // go to name
+
       const name = s.substring(c.from, c.to);
+      c.nextSibling(); // go to colon
+
+      const staticType = s.substring(c.from, c.to).replace(":", "").trim();
       c.nextSibling(); // go to equals
       c.nextSibling(); // go to value
+
       const value = traverseExpr(c, s);
       c.parent();
+      
       return {
         tag: "define",
+	staticType: staticType,
         name: name,
         value: value
       }
@@ -109,7 +131,82 @@ export function traverse(c : TreeCursor, s : string) : Array<Stmt> {
       throw new Error("Could not parse program at " + c.node.from + " " + c.node.to);
   }
 }
+
+export function tc_binExp(op : String, leftType : String, rightType : String) : String {
+  switch (op) {
+    case "-":
+    case "+":
+    case "*":
+    case ">=":
+    case "<=":
+    case ">":
+    case "<":
+    case "%":
+      console.log("arguments are: " + leftType + " and " + rightType);
+      if (leftType != "num" || rightType != "num") {
+	throw "Operator " + op + " expects both arguments to be `num'. Actual arguments are: `" + leftType + "' and `" + rightType + "'";
+      }
+      return "num";
+    case "==":
+    case "!=":
+      if (leftType != rightType) {
+	throw "Operator " + op + " types that are neither both num nor bool.";
+      }
+      return leftType;
+    default:
+      throw "Unknown operator " + op;
+  }
+}
+
+export function tc_expr(expr : Expr) : String {
+  console.log("Checking expression:");
+  console.log(expr);
+  switch(expr.tag) {
+    case "bool":
+      return "bool";
+    case "num":
+      return "num";
+    case "id":
+      return "any";
+    case "builtin1":
+      return "num";
+    case "builtin2":
+      return "num";
+    case "binExp":
+      const leftType = tc_expr(expr.arg[0]);
+      const rightType = tc_expr(expr.arg[1]);
+      const op = expr.name;
+      return tc_binExp(op, leftType, rightType);
+  }
+}
+
+export function tc_stmt(stmt : Stmt) : String {
+  switch (stmt.tag) {
+    case "expr":
+      return tc_expr(stmt.expr);
+    case "define":
+      const rhsType = tc_expr(stmt.value);
+      const lhsType = stmt.staticType;
+
+      if (rhsType != lhsType) {
+	throw "Type mismatch between lhs and rhs in assignment, lhs is `" + lhsType + "' rhs is `" + rhsType + "'";
+      }
+      
+      return stmt.staticType;
+  }
+}
+
+export function typecheck(ast : Array<Stmt>) : String {
+  ast.forEach(stmt => {
+    const staticType = tc_stmt(stmt);
+  });
+
+  return "Done";
+}
+
 export function parse(source : string) : Array<Stmt> {
   const t = parser.parse(source);
-  return traverse(t.cursor(), source);
+  const ast = traverse(t.cursor(), source);
+  typecheck(ast);
+  return ast;
 }
