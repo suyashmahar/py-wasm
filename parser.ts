@@ -1,3 +1,5 @@
+// -*- mode: typescript; typescript-indent-level: 2; -*-
+
 import {parser} from "lezer-python";
 import {TreeCursor} from "lezer-tree";
 import {Expr, Stmt} from "./ast";
@@ -14,21 +16,56 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr {
         tag: "id",
         name: s.substring(c.from, c.to)
       }
+
     case "CallExpression":
       c.firstChild();
       const callName = s.substring(c.from, c.to);
       c.nextSibling(); // go to arglist
       c.firstChild(); // go into arglist
       c.nextSibling(); // find single argument in arglist
-      const arg = traverseExpr(c, s);
-      c.parent(); // pop arglist
-      c.parent(); // pop CallExpression
-      return {
-        tag: "builtin1",
-        name: callName,
-        arg: arg
-      };
+      
+      const arg1 = traverseExpr(c, s);
+      c.nextSibling();
+      console.log(c.type.name);
+      if (c.node.type.name == ')') {
+	c.parent(); // pop arglist
+	c.parent(); // pop CallExpression
+	
+	return {
+          tag: "builtin1",
+          name: callName,
+          arg: arg1
+	};
+      } else {
+	c.nextSibling(); // pop the comma
+	const arg2 = traverseExpr(c, s);
+	c.parent();
+	c.parent();
+	
+	return {
+          tag: "builtin2",
+          name: callName,
+          arg: [arg1, arg2]
+	};
+      }
+    case "BinaryExpression":
+      c.firstChild();
 
+      const leftArg  = traverseExpr(c, s);
+      c.nextSibling();
+      const op       = s.substring(c.from, c.to);
+      c.nextSibling();
+      const rightArg = traverseExpr(c, s);
+
+      // Pop the expr
+      c.parent();
+      
+      return {
+	tag: "binExp",
+	name: op,
+	arg: [leftArg, rightArg]
+      };
+      
     default:
       throw new Error("Could not parse expr at " + c.from + " " + c.to + ": " + s.substring(c.from, c.to));
   }

@@ -1,3 +1,5 @@
+// -*- mode: typescript; typescript-indent-level: 2; -*-
+
 import {run} from './runner';
 
 
@@ -11,6 +13,19 @@ function webStart() {
           document.getElementById("output").appendChild(elt);
           elt.innerText = arg;
           return arg;
+        },
+        abs: (arg : any) => {
+          return Math.abs(arg);
+        },
+	
+        max: (arg1 : any, arg2 : any) => {
+	  return arg1 > arg2 ? arg1 : arg2;
+        },
+        min: (arg1 : any, arg2: any) => {
+	  return arg2 > arg1 ? arg1 : arg2;
+        },
+        pow: (arg1 : any, arg2 : any) => {
+          return Math.pow(arg1, arg2);
         },
       },
     };
