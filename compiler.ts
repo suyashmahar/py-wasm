@@ -29,7 +29,7 @@ export function augmentEnv(env: GlobalEnv, stmts: Array<Stmt>) : GlobalEnv {
     switch(s.tag) {
       case "define":
         newEnv.set(s.name, newOffset);
-        newOffset += 1;
+        newOffset += 8;
         break;
     }
   })
@@ -51,15 +51,15 @@ export function compile(source: string, env: GlobalEnv) : CompileResult {
   }); 
   const scratchVar : string = `(local $$last i64)`;
   const localDefines = [scratchVar];
-  definedVars.forEach(v => {
-    localDefines.push(`(local $${v} i64)`);
-  })
+  // definedVars.forEach(v => {
+  //   localDefines.push(`(local $${v} i64)`);
+  // })
   
-  const commandGroups = ast.map((stmt) => codeGen(stmt));
+  const withDefines = augmentEnv(env, ast);
+  const commandGroups = ast.map((stmt) => codeGen(stmt, withDefines));
   const commands = localDefines.concat([].concat.apply([], commandGroups));
   console.log("env:");
   console.log(env);
-  const withDefines = augmentEnv(env, ast);
   
   console.log("Generated: ", commands.join("\n"));
   return {
@@ -68,20 +68,22 @@ export function compile(source: string, env: GlobalEnv) : CompileResult {
   };
 }
 
-function codeGen(stmt: Stmt) : Array<string> {
+function codeGen(stmt: Stmt, env : GlobalEnv) : Array<string> {
   console.log("tag: " + stmt.tag);
   switch(stmt.tag) {
     case "define":
-      var valStmts = codeGenExpr(stmt.value);
-      return valStmts.concat([`(local.set $${stmt.name})`]);
+      
+      var valStmts = [`(i32.const ${env.globals.get(stmt.name)})`];
+      valStmts = valStmts.concat(codeGenExpr(stmt.value, env));
+      return valStmts.concat([`(i64.store)`]);
     case "expr":
-      var exprStmts = codeGenExpr(stmt.expr);
+      var exprStmts = codeGenExpr(stmt.expr, env);
       return exprStmts.concat([`(local.set $$last)`]);
     case "if":
       var result: Array<string> = [];
 
       // Push the condition to the stack
-      result = result.concat(codeGenExpr(stmt.cond));
+      result = result.concat(codeGenExpr(stmt.cond, env));
 
       // Generate the if block header
       result = result.concat("(if ");
@@ -91,7 +93,7 @@ function codeGen(stmt: Stmt) : Array<string> {
             
       // Add the ifBody
       stmt.ifBody.forEach(s => {
-	result = result.concat(codeGen(s));
+	result = result.concat(codeGen(s, env));
       });
 
       // Close the if block
@@ -112,11 +114,11 @@ function codeGenOp(op: string) : Array<string> {
   }
 }
 
-function codeGenExpr(expr : Expr) : Array<string> {
+function codeGenExpr(expr : Expr, env : GlobalEnv) : Array<string> {
   console.log(expr.tag);
   switch(expr.tag) {
     case "builtin1":
-      const argStmts = codeGenExpr(expr.arg);
+      const argStmts = codeGenExpr(expr.arg, env);
       return argStmts.concat([`(call $${expr.name})`]);
     case "bool":
       if (expr.value == true) {
@@ -127,15 +129,16 @@ function codeGenExpr(expr : Expr) : Array<string> {
     case "num":
       return ["(i64.const " + expr.value + ")"];
     case "id":
-      return [`(local.get $${expr.name})`];
+      return [`(i32.const ${env.globals.get(expr.name)})`,
+	      `(i64.load)`];
     case "binExp":
-      const leftArg  = codeGenExpr(expr.arg[0]);
+      const leftArg  = codeGenExpr(expr.arg[0], env);
       const op       = codeGenOp(expr.name);
-      const rightArg = codeGenExpr(expr.arg[1]);
+      const rightArg = codeGenExpr(expr.arg[1], env);
       return leftArg.concat(rightArg).concat(op);
     case "builtin2":
-      const firstArg = codeGenExpr(expr.arg[0]);
-      const secondArg = codeGenExpr(expr.arg[1]);
+      const firstArg = codeGenExpr(expr.arg[0], env);
+      const secondArg = codeGenExpr(expr.arg[1], env);
       return [...firstArg, ...secondArg, `(call $${expr.name})`];      
   }
 }
