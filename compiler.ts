@@ -20,6 +20,14 @@ type CompileResult = {
   newEnv: GlobalEnv
 };
 
+function getEnv(env: GlobalEnv, name: string) {
+  const result = env.globals.get(name);
+  if (result == undefined) {
+    throw "Variable `" + name + "' not in scope" ;
+  }
+  return result;
+}
+
 export function augmentEnv(env: GlobalEnv, stmts: Array<Stmt>) : GlobalEnv {
   console.log("Augmenting env");
   const newEnv = new Map(env.globals);
@@ -73,7 +81,7 @@ function codeGen(stmt: Stmt, env : GlobalEnv) : Array<string> {
   switch(stmt.tag) {
     case "define":
       
-      var valStmts = [`(i32.const ${env.globals.get(stmt.name)})`];
+      var valStmts = [`(i32.const ${getEnv(env, stmt.name)})`];
       valStmts = valStmts.concat(codeGenExpr(stmt.value, env));
       return valStmts.concat([`(i64.store)`]);
     case "expr":
@@ -129,7 +137,7 @@ function codeGenExpr(expr : Expr, env : GlobalEnv) : Array<string> {
     case "num":
       return ["(i64.const " + expr.value + ")"];
     case "id":
-      return [`(i32.const ${env.globals.get(expr.name)})`,
+      return [`(i32.const ${getEnv(env, expr.name)})`,
 	      `(i64.load)`];
     case "binExp":
       const leftArg  = codeGenExpr(expr.arg[0], env);
