@@ -101,8 +101,7 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
       c.nextSibling(); // go to the if body
       c.firstChild(); // descend into the body
       c.nextSibling(); // Skip the colon
-      console.log(c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
-      
+            
       var ifBody: Array<Stmt> = [];
       do {
 	ifBody = ifBody.concat(traverseStmt(c, s));
@@ -111,18 +110,43 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
       console.log("ifbody:");
       console.log(ifBody);
                 
+      c.parent();
+
+      var elseBody : Array<Stmt> = [];
+      var branches = [];
+      
+      
+      // Check for elif/else
+      while (c.nextSibling()) {
+      	const branchName = s.substring(c.node.from, c.node.to)
+	switch (branchName) {
+	  case "else":
+	    console.log("Found else statement");
+	    
+	    c.nextSibling(); // Skip the keyword
+	    c.firstChild(); // Get to the body
+	    c.nextSibling(); // Skip the colon
+	    console.log("<++> " + c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
+	    do {
+	      elseBody = elseBody.concat(traverseStmt(c, s));
+	    } while (c.nextSibling());
+	    console.log("<++> " + c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
+	    c.parent();
+	}
+      }
+
+      
       const result: Stmt = {
 	tag: "if",
 	cond: cond,
 	ifBody: ifBody,
 	branches: [],
-	elseBody: []
+	elseBody: elseBody
       }
 
       console.log("Result ");
       console.log(result);
 
-      c.parent();
       c.parent();
 
       return result;
@@ -182,14 +206,14 @@ export function tc_binExp(op : String, leftType : String, rightType : String) : 
     case "<":
     case "%":
       console.log("arguments are: " + leftType + " and " + rightType);
-      if (leftType != "num" || rightType != "num") {
-	throw "Operator " + op + " expects both arguments to be `num'. Actual arguments are: `" + leftType + "' and `" + rightType + "'";
+      if (leftType != "int" || rightType != "int") {
+	throw "Operator " + op + " expects both arguments to be `int'. Actual arguments are: `" + leftType + "' and `" + rightType + "'";
       }
-      return "num";
+      return "int";
     case "==":
     case "!=":
       if (leftType != rightType) {
-	throw "Operator " + op + " types that are neither both num nor bool.";
+	throw "Operator " + op + " types that are neither both int nor bool.";
       }
       return leftType;
     default:
@@ -204,13 +228,13 @@ export function tc_expr(expr : Expr) : String {
     case "bool":
       return "bool";
     case "num":
-      return "num";
+      return "int";
     case "id":
       return env[expr.name];
     case "builtin1":
-      return "num";
+      return "int";
     case "builtin2":
-      return "num";
+      return "int";
     case "binExp":
       const leftType = tc_expr(expr.arg[0]);
       const rightType = tc_expr(expr.arg[1]);

@@ -104,8 +104,24 @@ function codeGen(stmt: Stmt, env : GlobalEnv) : Array<string> {
 	result = result.concat(codeGen(s, env));
       });
 
-      // Close the if block
-      result = result.concat("))");
+      // Close if body
+      result = result.concat(") ");
+
+      if (stmt.elseBody != []) {
+	// The else block
+	result = result.concat("(else ");
+
+	// Add the elseBody
+	stmt.elseBody.forEach(s => {
+	  result = result.concat(codeGen(s, env));
+	});
+
+	// Close the else body
+	result = result.concat(")");
+      }
+
+      result = result.concat(")");
+      
       console.log("result = " + result);
       return result;
   }
