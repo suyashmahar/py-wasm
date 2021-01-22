@@ -5,6 +5,9 @@ import {TreeCursor} from "lezer-tree";
 import { Expression } from "typescript";
 import {Expr, Stmt} from "./ast";
 
+type EnvType = Record<string, string>;
+export var env : EnvType = {};
+
 export function traverseExpr(c : TreeCursor, s : string) : Expr {
   switch(c.type.name) {
     case "Boolean":
@@ -35,7 +38,7 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr {
       c.firstChild();
       const callName = s.substring(c.from, c.to);
       c.nextSibling(); // go to arglist
-      c.firstChild(); // go into arglist
+      c.firstChild();  // go into arglist
       c.nextSibling(); // find single argument in arglist
       
       const arg1 = traverseExpr(c, s);
@@ -87,7 +90,43 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr {
 }
 
 export function traverseStmt(c : TreeCursor, s : string) : Stmt {
+  console.log(c.node);
   switch(c.node.type.name) {
+    case "IfStatement":
+
+      c.firstChild(); // go to if
+      c.nextSibling(); // go to the condition
+      const cond = traverseExpr(c, s);
+
+      c.nextSibling(); // go to the if body
+      c.firstChild(); // descend into the body
+      c.nextSibling(); // Skip the colon
+      console.log(c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
+      
+      var ifBody: Array<Stmt> = [];
+      do {
+	ifBody = ifBody.concat(traverseStmt(c, s));
+      } while (c.nextSibling());
+
+      console.log("ifbody:");
+      console.log(ifBody);
+                
+      const result: Stmt = {
+	tag: "if",
+	cond: cond,
+	ifBody: ifBody,
+	branches: [],
+	elseBody: []
+      }
+
+      console.log("Result ");
+      console.log(result);
+
+      c.parent();
+      c.parent();
+
+      return result;
+      
     case "AssignStatement":
       c.firstChild(); // go to name
 
@@ -167,7 +206,7 @@ export function tc_expr(expr : Expr) : String {
     case "num":
       return "num";
     case "id":
-      return "any";
+      return env[expr.name];
     case "builtin1":
       return "num";
     case "builtin2":
@@ -189,10 +228,18 @@ export function tc_stmt(stmt : Stmt) : String {
       const lhsType = stmt.staticType;
 
       if (rhsType != lhsType) {
-	throw "Type mismatch between lhs and rhs in assignment, lhs is `" + lhsType + "' rhs is `" + rhsType + "'";
+	throw "Type mismatch in lhs and rhs in assignment, lhs is `" + lhsType + "' rhs is `" + rhsType + "'";
       }
+
+      env[stmt.name] = stmt.staticType;
       
       return stmt.staticType;
+    case "if":
+      const condType = tc_expr(stmt.cond);
+
+      if (condType != "bool") {
+	throw "Type mismatch in if statement's condition, expected `bool' but got `" + condType + "'";
+      }
   }
 }
 

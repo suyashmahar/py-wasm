@@ -7,11 +7,39 @@ import { parse } from "./parser";
 
 type LocalEnv = Map<string, boolean>;
 
+// Numbers are offsets into global memory
+export type GlobalEnv = {
+  globals: Map<string, number>;
+  offset: number;
+}
+
+export const emptyEnv = { globals: new Map(), offset: 0 };
+
 type CompileResult = {
   wasmSource: string,
+  newEnv: GlobalEnv
 };
 
-export function compile(source: string) : CompileResult {
+export function augmentEnv(env: GlobalEnv, stmts: Array<Stmt>) : GlobalEnv {
+  console.log("Augmenting env");
+  const newEnv = new Map(env.globals);
+  console.log("environment agumented");
+  var newOffset = env.offset;
+  stmts.forEach((s) => {
+    switch(s.tag) {
+      case "define":
+        newEnv.set(s.name, newOffset);
+        newOffset += 1;
+        break;
+    }
+  })
+  return {
+    globals: newEnv,
+    offset: newOffset
+  }
+}
+
+export function compile(source: string, env: GlobalEnv) : CompileResult {
   const ast = parse(source);
   const definedVars = new Set();
   ast.forEach(s => {
@@ -29,13 +57,19 @@ export function compile(source: string) : CompileResult {
   
   const commandGroups = ast.map((stmt) => codeGen(stmt));
   const commands = localDefines.concat([].concat.apply([], commandGroups));
+  console.log("env:");
+  console.log(env);
+  const withDefines = augmentEnv(env, ast);
+  
   console.log("Generated: ", commands.join("\n"));
   return {
     wasmSource: commands.join("\n"),
+    newEnv: withDefines
   };
 }
 
 function codeGen(stmt: Stmt) : Array<string> {
+  console.log("tag: " + stmt.tag);
   switch(stmt.tag) {
     case "define":
       var valStmts = codeGenExpr(stmt.value);
@@ -43,6 +77,27 @@ function codeGen(stmt: Stmt) : Array<string> {
     case "expr":
       var exprStmts = codeGenExpr(stmt.expr);
       return exprStmts.concat([`(local.set $$last)`]);
+    case "if":
+      var result: Array<string> = [];
+
+      // Push the condition to the stack
+      result = result.concat(codeGenExpr(stmt.cond));
+
+      // Generate the if block header
+      result = result.concat("(if ");
+
+      // Fix the size
+      result = result.concat("(i32.wrap/i64) (then");
+            
+      // Add the ifBody
+      stmt.ifBody.forEach(s => {
+	result = result.concat(codeGen(s));
+      });
+
+      // Close the if block
+      result = result.concat("))");
+      console.log("result = " + result);
+      return result;
   }
 }
 

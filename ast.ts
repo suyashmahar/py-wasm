@@ -3,6 +3,7 @@
 export type Stmt =
   | { tag: "define", name: string, staticType: string, value: Expr }
   | { tag: "expr", expr: Expr }
+  | { tag: "if", cond: Expr, ifBody: Array<Stmt>, branches: Array<[Expr, Array<Stmt>]>, elseBody: Array<Stmt> }
 
 export type Expr =
     { tag: "num", value: number }
