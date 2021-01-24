@@ -257,6 +257,36 @@ function codeGenOp(op: string) : Array<string> {
       return [`(i64.le_s)`, `(i64.extend_i32_s)`];
     case ">=":
       return [`(i64.ge_s)`, `(i64.extend_i32_s)`];
+    case "//":
+      return [`(i64.div_s)`];
+    case "%":
+      return [`(i64.rem_s)`]
+    case "==":
+      return [`(i64.eq)`,
+	      `(i64.extend_i32_s)`,
+	      `(i64.const 1)`,
+	      `(i64.const 62)`,
+	      `(i64.shl)`,
+	      `(i64.add)`];
+    case "!=":
+      return [`(i64.ne)`,
+	      `(i64.extend_i32_s)`,
+	      `(i64.const 1)`,
+	      `(i64.const 62)`,
+	      `(i64.shl)`,
+	      `(i64.add)`];
+    case "is":
+      return [`(i64.sub)`,
+	      `(i64.const 32)`,
+	      `(i64.shr_u)`,
+	      `(i64.const 0)`,
+	      `(i64.eq)`,
+	      `(i64.extend_i32_s)`,
+	      `(i64.const 1)`,
+	      `(i64.const 62)`,
+	      `(i64.shl)`,
+	      `(i64.add)`
+	     ];
   }
 }
 
