@@ -28,6 +28,10 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr {
         tag: "num",
         value: Number(s.substring(c.from, c.to))
       }
+    case "None":
+      return {
+	tag: "none",
+      }
     case "VariableName":
       return {
         tag: "id",
@@ -241,6 +245,16 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
       const expr = traverseExpr(c, s);
       c.parent(); // pop going into stmt
       return { tag: "expr", expr: expr }
+    case "ReturnStatement":
+      c.firstChild();
+      var retExpr: Expr = undefined;
+      console.log("<54> " + c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
+      if (c.nextSibling() != undefined) { // Skip 'return'
+	retExpr = traverseExpr(c, s);
+      }
+      console.log("<54> " + c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
+      c.parent();
+      return { tag: "return", expr: retExpr };
     default:
       throw new Error("Could not parse stmt at " + c.node.from + " " + c.node.to + ": " + s.substring(c.from, c.to));
   }
@@ -295,6 +309,8 @@ export function tc_expr(expr : Expr) : String {
       return "bool";
     case "num":
       return "int";
+    case "none":
+      return "none";
     case "id":
       return env[expr.name];
     case "funcCall":

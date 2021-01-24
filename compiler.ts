@@ -9,6 +9,7 @@ type LocalEnv = Map<string, boolean>;
 
 // Store all the functions separately
 export var funcs : Array<Array<string>> = [];
+export const NONE_VAL = "2305843009213693952"; // 1<<62
 
 // Numbers are offsets into global memory
 export type GlobalEnv = {
@@ -133,23 +134,36 @@ function codeGenFunc(stmt: Stmt, env : GlobalEnv) : Array<string> {
     }
 
     if (stmt.ret != "None") {
-      result.push(`(local.get $$last)`);
+      // result.push(`(local.get $$last)`);
     } else { // Return None
-      result.push(`(i64.const 2305843009213693952)`); // 1UL << 62
+      result.push(`(i64.const ${NONE_VAL})`); // 1UL << 62
     }
     
     // Close the function body
-    result = result.concat(")");
+    result = result.concat([")", ""]);
 
     console.log("function compiled:");
     console.log(result);
 
     // Add this function to the global function list
     funcs.push(result);
-    
+
     return [];
   } else {
     throw "Cannot run codeGenFunc on non func statement";
+  }
+}
+
+function codeGenRet(stmt : Stmt, env : GlobalEnv, localParams: Array<Parameter>) : Array<string> {
+  if (stmt.tag == "return") {
+    var result : Array<string> = [];
+    
+    result = codeGenExpr(stmt.expr, env, localParams);
+    console.log("codeGenRet resuilt:");
+    console.log(result);
+    return result.concat([`(return)`]);
+  } else {
+    throw "Cannot run codeGenRet on non return statement";
   }
 }
 
@@ -158,6 +172,8 @@ function codeGen(stmt: Stmt, env : GlobalEnv, localParams: Array<Parameter> = []
   switch(stmt.tag) {
     case "func":
       return codeGenFunc(stmt, env);
+    case "return":
+      return codeGenRet(stmt, env, localParams);
     case "define":
       if (localParams.length == 0) { // Global context
 	var valStmts = [`(i32.const ${getEnv(env, stmt.name)})`];
@@ -196,7 +212,7 @@ function codeGen(stmt: Stmt, env : GlobalEnv, localParams: Array<Parameter> = []
 
 	// Add the elseBody
 	stmt.elseBody.forEach(s => {
-	  result = result.concat(codeGen(s, env));
+	  result = result.concat(codeGen(s, env, localParams));
 	});
 
 	// Close the else body
@@ -218,6 +234,14 @@ function codeGenOp(op: string) : Array<string> {
       return [`(i64.sub)`];
     case "*":
       return [`(i64.mul)`];
+    case ">":
+      return [`(i64.gt_s)`, `(i64.extend_i32_s)`];
+    case "<":
+      return [`(i64.lt_s)`, `(i64.extend_i32_s)`];
+    case "<=":
+      return [`(i64.le_s)`, `(i64.extend_i32_s)`];
+    case ">=":
+      return [`(i64.ge_s)`, `(i64.extend_i32_s)`];
   }
 }
 
@@ -259,6 +283,8 @@ function codeGenExpr(expr : Expr, env : GlobalEnv, localParams : Array<Parameter
     case "num":
       return ["(i64.const " + expr.value + ")"];
     case "id":
+      console.log("Locals:");
+      console.log(localParams);
       if (getLocal(localParams, expr.name)) {
 	console.log("getting local");
 	return [`(local.get $${expr.name})`];
@@ -272,5 +298,7 @@ function codeGenExpr(expr : Expr, env : GlobalEnv, localParams : Array<Parameter
       const op       = codeGenOp(expr.name);
       const rightArg = codeGenExpr(expr.arg[1], env, localParams);
       return leftArg.concat(rightArg).concat(op);
+    case "none":
+      return [`(i64.const ${NONE_VAL})`];
   }
 }
