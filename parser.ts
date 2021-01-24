@@ -66,6 +66,22 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr {
         name: callName,
         args: args
       };
+    case "UnaryExpression":
+      c.firstChild();
+
+      const uop = s.substring(c.from, c.to);
+      c.nextSibling();
+      const uArg = traverseExpr(c, s);
+
+      // Pop the expr
+      c.parent();
+      
+      return {
+	tag: "unaryExp",
+	name: uop,
+	arg: uArg
+      };
+      
     case "BinaryExpression":
       c.firstChild();
 

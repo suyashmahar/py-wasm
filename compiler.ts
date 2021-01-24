@@ -241,6 +241,20 @@ function codeGen(stmt: Stmt, env : GlobalEnv, localParams: Array<Parameter> = []
   }
 }
 
+function codeGenUOp(uop: string) : Array<string> {
+  switch (uop) {
+    case "-":
+      return [`(i64.const -1)`,
+	      `(i64.mul)`]
+    case "not":
+      return [`(i64.const 1)`,
+	      `(i64.add)`,
+	      `(i64.const 18446744073709551613)`, // Reset bit at pos 1 { ((1<<64)-1)-2 }
+	      `(i64.and)`
+	     ]
+  }
+}
+
 function codeGenOp(op: string) : Array<string> {
   switch (op) {
     case "+":
@@ -343,6 +357,10 @@ function codeGenExpr(expr : Expr, env : GlobalEnv, localParams : Array<Parameter
       const op       = codeGenOp(expr.name);
       const rightArg = codeGenExpr(expr.arg[1], env, localParams);
       return leftArg.concat(rightArg).concat(op);
+    case "unaryExp":
+      const uop  = codeGenUOp(expr.name);
+      const uArg = codeGenExpr(expr.arg, env, localParams);
+      return uArg.concat(uop);
     case "none":
       return [`(i64.const ${NONE_VAL})`];
   }

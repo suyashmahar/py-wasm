@@ -14,8 +14,8 @@ function webStart() {
 	  console.log(arg);
 	  var processedArg = arg;
 	  console.log(typeof arg);
-	  
-	  if ((arg & BigInt(1<<63)) != BigInt(0)) {
+	  if (((arg & BigInt(1)<<BigInt(62)) != BigInt(0))
+	    && ((arg & BigInt(1)<<BigInt(63)) == BigInt(0))) {
 	    console.log("Found boolean type in print function");
 	    const mask = ((BigInt(1)<<BigInt(62))-BigInt(1));
 	    const boolVal = Number(arg & mask);
