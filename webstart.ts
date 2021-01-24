@@ -26,6 +26,10 @@ function webStart() {
 	      processedArg = "True";
 	    }
 	  }
+
+	  if (arg == BigInt(1)<<BigInt(61)) {
+	    processedArg = "None";
+	  }
 	  
           console.log("Logging from WASM: ", processedArg);
           const elt = document.createElement("pre");

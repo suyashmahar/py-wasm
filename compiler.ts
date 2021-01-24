@@ -13,6 +13,9 @@ export var funcs : Array<Array<string>> = [];
 // Numbers are offsets into global memory
 export type GlobalEnv = {
   globals: Map<string, number>;
+  funcs: Map<string, [number, string]>; // Stores the number of
+				      // arguments and return type for
+				      // a functions
   offset: number;
 }
 
@@ -48,17 +51,23 @@ export function augmentEnv(env: GlobalEnv, stmts: Array<Stmt>) : GlobalEnv {
   const newEnv = new Map(env.globals);
   console.log("environment agumented");
   var newOffset = env.offset;
+  var newFuncs = new Map(env.funcs);
+  
   stmts.forEach((s) => {
     switch(s.tag) {
       case "define":
         newEnv.set(s.name, newOffset);
         newOffset += 8;
         break;
+      case "func":
+	newFuncs.set(s.name, [s.parameters.length, s.ret]);
+	break;
     }
   })
   return {
     globals: newEnv,
-    offset: newOffset
+    offset: newOffset,
+    funcs: newFuncs
   }
 }
 
@@ -108,9 +117,7 @@ function codeGenFunc(stmt: Stmt, env : GlobalEnv) : Array<string> {
       header += ` (param $${param.name} i64) `;
     });
 
-    if (stmt.ret != "None") {
-      header += ` (result i64) `;
-    }
+    header += ` (result i64) `;
 
     result.push(header);
 
@@ -127,8 +134,10 @@ function codeGenFunc(stmt: Stmt, env : GlobalEnv) : Array<string> {
 
     if (stmt.ret != "None") {
       result.push(`(local.get $$last)`);
+    } else { // Return None
+      result.push(`(i64.const 2305843009213693952)`); // 1UL << 62
     }
-
+    
     // Close the function body
     result = result.concat(")");
 
@@ -215,9 +224,32 @@ function codeGenOp(op: string) : Array<string> {
 function codeGenExpr(expr : Expr, env : GlobalEnv, localParams : Array<Parameter>) : Array<string> {
   console.log(expr.tag);
   switch(expr.tag) {
-    case "builtin1":
-      const argStmts = codeGenExpr(expr.arg, env, localParams);
-      return argStmts.concat([`(call $${expr.name})`]);
+    case "funcCall":
+      var argStmts : Array<string> = [];
+      expr.args.forEach(arg => {
+	argStmts = argStmts.concat(codeGenExpr(arg, env, localParams));
+      });
+
+      if (env.funcs.get(expr.name) == undefined) {
+	throw "Function not in scope: `" + expr.name + "()'"
+      }
+
+      const argsExpected = env.funcs.get(expr.name)[0];
+      const argsProvided = expr.args.length;
+      if (argsExpected != argsProvided) {
+	throw "`" + expr.name + "()' needs "
+	  + `${argsExpected} arguments, ${argsProvided} provided`;
+      }
+
+      console.log("args:");
+      console.log(expr.args);
+      
+      const result = argStmts.concat([`(call $${expr.name})`]);
+
+      console.log("result: ");
+      console.log(result);
+      
+      return result;
     case "bool":
       if (expr.value == true) {
 	return ["(i64.const " + ((BigInt(1)<<BigInt(62)) + BigInt(1)).toString() + ")"];
@@ -240,9 +272,5 @@ function codeGenExpr(expr : Expr, env : GlobalEnv, localParams : Array<Parameter
       const op       = codeGenOp(expr.name);
       const rightArg = codeGenExpr(expr.arg[1], env, localParams);
       return leftArg.concat(rightArg).concat(op);
-    case "builtin2":
-      const firstArg = codeGenExpr(expr.arg[0], env, localParams);
-      const secondArg = codeGenExpr(expr.arg[1], env, localParams);
-      return [...firstArg, ...secondArg, `(call $${expr.name})`];      
   }
 }

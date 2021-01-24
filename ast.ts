@@ -13,5 +13,4 @@ export type Expr =
   | { tag: "bool", value: boolean}
   | { tag: "id", name: string }
   | { tag: "binExp", name: string, arg: [Expr, Expr] }
-  | { tag: "builtin1", name: string, arg: Expr }
-  | { tag: "builtin2", name: string, arg: [Expr, Expr] }
+  | { tag: "funcCall", name: string, args: Array<Expr> }

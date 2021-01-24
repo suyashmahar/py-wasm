@@ -41,30 +41,27 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr {
       c.firstChild();  // go into arglist
       c.nextSibling(); // find single argument in arglist
       
-      const arg1 = traverseExpr(c, s);
+      var args: Array<Expr> = [traverseExpr(c, s)];
       c.nextSibling();
-      console.log(c.type.name);
-      if (c.node.type.name == ')') {
-	c.parent(); // pop arglist
-	c.parent(); // pop CallExpression
+      
+      while (c.node.type.name != ')') {
+      	c.nextSibling(); // pop the comma
 	
-	return {
-          tag: "builtin1",
-          name: callName,
-          arg: arg1
-	};
-      } else {
-	c.nextSibling(); // pop the comma
-	const arg2 = traverseExpr(c, s);
-	c.parent();
-	c.parent();
-	
-	return {
-          tag: "builtin2",
-          name: callName,
-          arg: [arg1, arg2]
-	};
+	console.log("<50> " + c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
+	args.push(traverseExpr(c, s));
+	c.nextSibling();
+  
+	console.log("<54> " + c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
       }
+
+      c.parent(); // pop arglist
+      c.parent(); // pop CallExpression
+      
+      return {
+        tag: "funcCall",
+        name: callName,
+        args: args
+      };
     case "BinaryExpression":
       c.firstChild();
 
@@ -93,8 +90,6 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
   console.log(c.node);
   switch(c.node.type.name) {
     case "FunctionDefinition":
-      console.log("Parsing function");
-      
       c.firstChild(); // Descend to the function
       c.nextSibling(); // Skip the 'def' keyword
 
@@ -104,9 +99,6 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
       c.firstChild(); // Descend to the variable list
       c.nextSibling(); // Skip the opening paren
 
-      console.log("Parsing the parameters");
-      console.log("<++> " + c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
-      
       var paramList : Array<Parameter> = [];
       var iter = 0;
       while (s.substring(c.node.from, c.node.to) != ")") {
@@ -121,8 +113,6 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
 	var paramType = s.substring(c.node.from, c.node.to)
 	c.parent();
 
-	console.log("<124> " + c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
-
 	paramList = paramList.concat({
 	  tag: "parameter",
 	  name: varName,
@@ -133,11 +123,9 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
 	
 	// Check if the next token is a comma
 	if (s.substring(c.node.from, c.node.to) == ",") {
-	  console.log("Skipping to the next token on comma");
 	  c.nextSibling(); // Skip it
 	} 
 	
-	console.log("<132> " + c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
       };
 
       c.parent(); // Get out of the parameter list
@@ -160,7 +148,6 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
       
       c.parent();
       c.parent();
-      console.log("<Parsing complete> " + c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
       
       const resultVal: Stmt = {
 	tag: "func",
@@ -170,9 +157,6 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
 	body: bodyStmts	
       }
 
-      console.log("Result function");
-      console.log(resultVal);
-      
       return resultVal;
     case "IfStatement":
 
@@ -313,9 +297,7 @@ export function tc_expr(expr : Expr) : String {
       return "int";
     case "id":
       return env[expr.name];
-    case "builtin1":
-      return "int";
-    case "builtin2":
+    case "funcCall":
       return "int";
     case "binExp":
       const leftType = tc_expr(expr.arg[0]);
