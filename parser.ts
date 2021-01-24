@@ -3,7 +3,7 @@
 import {parser} from "lezer-python";
 import {TreeCursor} from "lezer-tree";
 import { Expression } from "typescript";
-import {Expr, Stmt} from "./ast";
+import {Expr, Stmt, Parameter} from "./ast";
 
 type EnvType = Record<string, string>;
 export var env : EnvType = {};
@@ -92,6 +92,88 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr {
 export function traverseStmt(c : TreeCursor, s : string) : Stmt {
   console.log(c.node);
   switch(c.node.type.name) {
+    case "FunctionDefinition":
+      console.log("Parsing function");
+      
+      c.firstChild(); // Descend to the function
+      c.nextSibling(); // Skip the 'def' keyword
+
+      const funName = s.substring(c.node.from, c.node.to);
+
+      c.nextSibling(); // Skip to the parameter list
+      c.firstChild(); // Descend to the variable list
+      c.nextSibling(); // Skip the opening paren
+
+      console.log("Parsing the parameters");
+      console.log("<++> " + c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
+      
+      var paramList : Array<Parameter> = [];
+      var iter = 0;
+      while (s.substring(c.node.from, c.node.to) != ")") {
+	iter+=1;
+	if (iter > 10) {
+	  break;
+	}
+	var varName = s.substring(c.node.from, c.node.to);
+	c.nextSibling(); // go to the typedef
+	c.firstChild(); // descend to the typedef
+	c.nextSibling(); // Skip the colon
+	var paramType = s.substring(c.node.from, c.node.to)
+	c.parent();
+
+	console.log("<124> " + c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
+
+	paramList = paramList.concat({
+	  tag: "parameter",
+	  name: varName,
+	  type: paramType
+	});
+
+	c.nextSibling(); // go to the next token (',', ')')
+	
+	// Check if the next token is a comma
+	if (s.substring(c.node.from, c.node.to) == ",") {
+	  console.log("Skipping to the next token on comma");
+	  c.nextSibling(); // Skip it
+	} 
+	
+	console.log("<132> " + c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
+      };
+
+      c.parent(); // Get out of the parameter list
+      
+      c.nextSibling(); // Go to the function's typedef
+      c.firstChild();
+
+      const retType = s.substring(c.node.from, c.node.to);
+      
+      c.parent(); // Go back to the function
+
+      c.nextSibling(); // Get to the function body
+      c.firstChild();
+      c.nextSibling(); // Skip the colon in the body
+
+      var bodyStmts: Array<Stmt> = [];
+      do {
+        bodyStmts.push(traverseStmt(c, s));
+      } while(c.nextSibling());
+      
+      c.parent();
+      c.parent();
+      console.log("<Parsing complete> " + c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
+      
+      const resultVal: Stmt = {
+	tag: "func",
+	name: funName,
+	parameters: paramList,
+	ret: retType,
+	body: bodyStmts	
+      }
+
+      console.log("Result function");
+      console.log(resultVal);
+      
+      return resultVal;
     case "IfStatement":
 
       c.firstChild(); // go to if

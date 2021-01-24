@@ -1,11 +1,14 @@
 // -*- mode: typescript; typescript-indent-level: 2; -*-
 
-import { Stmt, Expr } from "./ast";
+import { Stmt, Expr, Parameter } from "./ast";
 import { parse } from "./parser";
 
 // https://learnxinyminutes.com/docs/wasm/
 
 type LocalEnv = Map<string, boolean>;
+
+// Store all the functions separately
+export var funcs : Array<Array<string>> = [];
 
 // Numbers are offsets into global memory
 export type GlobalEnv = {
@@ -17,7 +20,8 @@ export const emptyEnv = { globals: new Map(), offset: 0 };
 
 type CompileResult = {
   wasmSource: string,
-  newEnv: GlobalEnv
+  newEnv: GlobalEnv,
+  funcs: string
 };
 
 function getEnv(env: GlobalEnv, name: string) {
@@ -25,6 +29,17 @@ function getEnv(env: GlobalEnv, name: string) {
   if (result == undefined) {
     throw "Variable `" + name + "' not in scope" ;
   }
+  return result;
+}
+
+function getLocal(localParams: Array<Parameter>, name: string) : boolean {
+  var result:boolean = false;
+  localParams.forEach((p) => {
+    if (p.name == name) {
+      result = true;
+    }
+  })
+  
   return result;
 }
 
@@ -68,30 +83,89 @@ export function compile(source: string, env: GlobalEnv) : CompileResult {
   const commands = localDefines.concat([].concat.apply([], commandGroups));
   console.log("env:");
   console.log(env);
+
+  var funcsStr = "";
+  funcs.forEach(fun => {
+    funcsStr = funcsStr.concat(fun.join("\n"))
+  });
+
   
   console.log("Generated: ", commands.join("\n"));
   return {
     wasmSource: commands.join("\n"),
-    newEnv: withDefines
+    newEnv: withDefines,
+    funcs: funcsStr
   };
 }
 
-function codeGen(stmt: Stmt, env : GlobalEnv) : Array<string> {
+function codeGenFunc(stmt: Stmt, env : GlobalEnv) : Array<string> {
+  if (stmt.tag == "func") {
+    var result: Array<string> = [];
+
+    var header = `(func $${stmt.name}`;
+
+    stmt.parameters.forEach(param => {
+      header += ` (param $${param.name} i64) `;
+    });
+
+    if (stmt.ret != "None") {
+      header += ` (result i64) `;
+    }
+
+    result.push(header);
+
+    result.push(`(local $$last i64)`)
+    
+    if (stmt.body != []) {
+      console.log("parameters:");
+      console.log(stmt.parameters);
+      stmt.body.forEach(s => {
+	result = result.concat(codeGen(s, env, stmt.parameters));
+      });
+
+    }
+
+    if (stmt.ret != "None") {
+      result.push(`(local.get $$last)`);
+    }
+
+    // Close the function body
+    result = result.concat(")");
+
+    console.log("function compiled:");
+    console.log(result);
+
+    // Add this function to the global function list
+    funcs.push(result);
+    
+    return [];
+  } else {
+    throw "Cannot run codeGenFunc on non func statement";
+  }
+}
+
+function codeGen(stmt: Stmt, env : GlobalEnv, localParams: Array<Parameter> = []) : Array<string> {
   console.log("tag: " + stmt.tag);
   switch(stmt.tag) {
+    case "func":
+      return codeGenFunc(stmt, env);
     case "define":
-      
-      var valStmts = [`(i32.const ${getEnv(env, stmt.name)})`];
-      valStmts = valStmts.concat(codeGenExpr(stmt.value, env));
-      return valStmts.concat([`(i64.store)`]);
+      if (localParams.length == 0) { // Global context
+	var valStmts = [`(i32.const ${getEnv(env, stmt.name)})`];
+	valStmts = valStmts.concat(codeGenExpr(stmt.value, env, localParams));
+	return valStmts.concat([`(i64.store)`]);
+      } else { // Local context
+	var valStmts = [`(local.get $${stmt.name})`];
+	return valStmts;
+      }
     case "expr":
-      var exprStmts = codeGenExpr(stmt.expr, env);
+      var exprStmts = codeGenExpr(stmt.expr, env, localParams);
       return exprStmts.concat([`(local.set $$last)`]);
     case "if":
       var result: Array<string> = [];
 
       // Push the condition to the stack
-      result = result.concat(codeGenExpr(stmt.cond, env));
+      result = result.concat(codeGenExpr(stmt.cond, env, localParams));
 
       // Generate the if block header
       result = result.concat("(if ");
@@ -101,7 +175,7 @@ function codeGen(stmt: Stmt, env : GlobalEnv) : Array<string> {
             
       // Add the ifBody
       stmt.ifBody.forEach(s => {
-	result = result.concat(codeGen(s, env));
+	result = result.concat(codeGen(s, env, localParams));
       });
 
       // Close if body
@@ -138,11 +212,11 @@ function codeGenOp(op: string) : Array<string> {
   }
 }
 
-function codeGenExpr(expr : Expr, env : GlobalEnv) : Array<string> {
+function codeGenExpr(expr : Expr, env : GlobalEnv, localParams : Array<Parameter>) : Array<string> {
   console.log(expr.tag);
   switch(expr.tag) {
     case "builtin1":
-      const argStmts = codeGenExpr(expr.arg, env);
+      const argStmts = codeGenExpr(expr.arg, env, localParams);
       return argStmts.concat([`(call $${expr.name})`]);
     case "bool":
       if (expr.value == true) {
@@ -153,16 +227,22 @@ function codeGenExpr(expr : Expr, env : GlobalEnv) : Array<string> {
     case "num":
       return ["(i64.const " + expr.value + ")"];
     case "id":
-      return [`(i32.const ${getEnv(env, expr.name)})`,
+      if (getLocal(localParams, expr.name)) {
+	console.log("getting local");
+	return [`(local.get $${expr.name})`];
+      } else {
+	console.log("Getting global");
+	return [`(i32.const ${getEnv(env, expr.name)})`,
 	      `(i64.load)`];
+      }
     case "binExp":
-      const leftArg  = codeGenExpr(expr.arg[0], env);
+      const leftArg  = codeGenExpr(expr.arg[0], env, localParams);
       const op       = codeGenOp(expr.name);
-      const rightArg = codeGenExpr(expr.arg[1], env);
+      const rightArg = codeGenExpr(expr.arg[1], env, localParams);
       return leftArg.concat(rightArg).concat(op);
     case "builtin2":
-      const firstArg = codeGenExpr(expr.arg[0], env);
-      const secondArg = codeGenExpr(expr.arg[1], env);
+      const firstArg = codeGenExpr(expr.arg[0], env, localParams);
+      const secondArg = codeGenExpr(expr.arg[1], env, localParams);
       return [...firstArg, ...secondArg, `(call $${expr.name})`];      
   }
 }

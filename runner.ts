@@ -52,6 +52,7 @@ export async function run(source : string, config: any) : Promise<[any, compiler
       ${compiled.wasmSource}
       ${returnExpr}
     )
+    ${compiled.funcs}
   )`;
 
   console.log(wasmSource);
