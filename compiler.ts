@@ -238,6 +238,34 @@ function codeGen(stmt: Stmt, env : GlobalEnv, localParams: Array<Parameter> = []
       
       console.log("result = " + result);
       return result;
+    case "while":
+      var result: Array<string> = [];
+
+      // Generate the if block header
+      result = result.concat("(block (loop ");
+
+      // Push the condition to the stack
+      result = result.concat(codeGenExpr(stmt.cond, env, localParams));
+      result = result.concat(`(i32.wrap/i64)`);
+
+      // Negate the condition
+      result = result.concat(`(i32.const 1)`);
+      result = result.concat(`(i32.xor)`);
+      
+      // Fix the size
+      result = result.concat("(br_if 1)");
+
+      // Add the whileBody
+      stmt.whileBody.forEach(s => {
+	result = result.concat(codeGen(s, env, localParams));
+      });            
+
+      // Close while body
+      result = result.concat("(br 0)");
+      result = result.concat(")) ");
+
+      console.log("result = " + result);
+      return result;
   }
 }
 

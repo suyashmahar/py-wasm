@@ -7,6 +7,7 @@ export type Stmt =
   | { tag: "define", name: string, staticType: string, value: Expr }
   | { tag: "assign", name: string, value: Expr }
   | { tag: "expr", expr: Expr }
+  | { tag: "while", cond: Expr, whileBody: Array<Stmt> }
   | { tag: "if", cond: Expr, ifBody: Array<Stmt>, branches: Array<[Expr, Array<Stmt>]>, elseBody: Array<Stmt> }
   | { tag: "return", expr: Expr }
 
