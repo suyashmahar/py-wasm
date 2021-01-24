@@ -227,18 +227,30 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
       const name = s.substring(c.from, c.to);
       c.nextSibling(); // go to colon
 
-      const staticType = s.substring(c.from, c.to).replace(":", "").trim();
+      var staticType:string = undefined;
+      if (s.substring(c.from, c.from+1) == ':') {
+	staticType = s.substring(c.from, c.to).replace(":", "").trim();
+      }
+      
       c.nextSibling(); // go to equals
       c.nextSibling(); // go to value
 
       const value = traverseExpr(c, s);
       c.parent();
-      
-      return {
-        tag: "define",
-	staticType: staticType,
-        name: name,
-        value: value
+
+      if (staticType != undefined) {
+	return {
+          tag: "define",
+	  staticType: staticType,
+          name: name,
+          value: value
+	}
+      } else {
+	return {
+	  tag: "assign",
+	  name: name,
+	  value: value
+	}
       }
     case "ExpressionStatement":
       c.firstChild();

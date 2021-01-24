@@ -113,9 +113,16 @@ function codeGenFunc(stmt: Stmt, env : GlobalEnv) : Array<string> {
     var result: Array<string> = [];
 
     var header = `(func $${stmt.name}`;
+    var funcLocals:Array<Parameter> = stmt.parameters;
 
     stmt.parameters.forEach(param => {
       header += ` (param $${param.name} i64) `;
+    });
+
+    stmt.body.forEach(s => {
+      if (s.tag == "define") {
+	funcLocals.push({tag : "parameter", name: s.name, type: s.staticType});
+      }
     });
 
     header += ` (result i64) `;
@@ -180,8 +187,16 @@ function codeGen(stmt: Stmt, env : GlobalEnv, localParams: Array<Parameter> = []
 	valStmts = valStmts.concat(codeGenExpr(stmt.value, env, localParams));
 	return valStmts.concat([`(i64.store)`]);
       } else { // Local context
-	var valStmts = [`(local.get $${stmt.name})`];
+	var valStmts = [`(local $${stmt.name} i64)`];
 	return valStmts;
+      }
+    case "assign":
+      if (getLocal(localParams, stmt.name)) {
+	return codeGenExpr(stmt.value, env, localParams).concat([`(local.set $${stmt.name})`])
+      } else {
+	var rhs = [`(i32.const ${getEnv(env, stmt.name)})`]
+	rhs = rhs.concat(codeGenExpr(stmt.value, env, localParams));
+	return rhs.concat([`(i64.store)`]);
       }
     case "expr":
       var exprStmts = codeGenExpr(stmt.expr, env, localParams);
