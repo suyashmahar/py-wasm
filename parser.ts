@@ -99,7 +99,14 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr {
 	name: op,
 	arg: [leftArg, rightArg]
       };
+    case "ParenthesizedExpression":
+      c.firstChild();
+
+      c.nextSibling(); // Skip the opening paren
+      const expr = traverseExpr(c, s);
+      c.parent();
       
+      return expr;
     default:
       console.log(c);
       throw new Error("Could not parse expr at " + c.from + " " + c.to + ": " + s.substring(c.from, c.to));
@@ -323,7 +330,7 @@ export function tc_binExp(op : String, leftType : String, rightType : String) : 
       if (leftType != rightType) {
 	throw "Operator " + op + " types that are neither both int nor bool.";
       }
-      return leftType;
+      return "bool";
     default:
       throw "Unknown operator " + op;
   }
