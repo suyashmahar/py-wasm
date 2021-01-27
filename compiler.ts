@@ -335,7 +335,7 @@ function codeGenExpr(expr : Expr, env : GlobalEnv, localParams : Array<Parameter
       });
 
       if (env.funcs.get(expr.name) == undefined) {
-	throw "Function not in scope: `" + expr.name + "()'"
+	scopeError(expr.pos, `Function not in scope: ${expr.name}`, source);
       }
 
       const argsExpected = env.funcs.get(expr.name)[0];

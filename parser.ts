@@ -438,6 +438,9 @@ export function tc_binExp(pos: Pos, op : string, leftType : string, rightType : 
       }
       return "bool";
     case "is":
+      if (leftType != "none" || rightType != "none") {
+	typeError(pos, `Operator is used on non-None types, ${leftType} and ${rightType}`, source);
+      }
       return "bool";
     default:
       throw "Unknown operator " + op;
@@ -457,7 +460,7 @@ export function tc_uExp(pos: Pos, op: string, exprType: string, source: string) 
   }
 }
 
-export function tc_expr(expr : Expr, source: string) : string {
+export function tc_expr(expr : Expr, source: string, funEnv: EnvType = <EnvType>{}):string {
   console.log("Checking expression:");
   console.log(expr);
   switch(expr.tag) {
@@ -468,7 +471,11 @@ export function tc_expr(expr : Expr, source: string) : string {
     case "none":
       return "none";
     case "id":
-      return env[expr.name];
+      if (funEnv[expr.name] != undefined) {
+	return funEnv[expr.name];
+      } else {
+	return env[expr.name];
+      }
     case "funcCall":
       expr.args.forEach(s => {tc_expr(s, source)});
       return "int";
@@ -494,6 +501,8 @@ export function tc_stmt(stmt: Stmt, source: string) : String {
       const rhsType = tc_expr(stmt.value, source);
       const lhsType = stmt.staticType;
 
+      console.log(`Found definition of ${stmt.name}`);
+      
       if (rhsType != lhsType) {
 	const errMsg = `${rhsType} value assigned to '${stmt.name}' which is of type ${lhsType}`;
 	typeError(stmt.pos, errMsg, source);
@@ -533,10 +542,20 @@ export function tc_stmt(stmt: Stmt, source: string) : String {
 
       return retType;
     case "func":
+      var funEnv: EnvType = <EnvType>{};
+      stmt.body.forEach(s => {
+	if (s.tag == "define") {
+	  funEnv[s.name] = s.staticType;
+	}
+      });
+      
+      console.log(funEnv);
+
       stmt.body.forEach(s => {
 	if (s.tag == "return") {
-	  if (tc_expr(s.expr, source) != stmt.ret) {
-	    const throwMsg = `Return's type and function's return type don't match`;
+	  const retType = tc_expr(s.expr, source, funEnv);
+	  if (retType != stmt.ret) {
+	    const throwMsg = `Return's type ${retType} and function's return type ${stmt.ret} don't match`;
 	    typeError(s.pos, throwMsg, source);
 	  }
 	}
