@@ -5,6 +5,7 @@ export type Pos = { line: number, col: number, len: number } // For line informa
 export type Branch = { tag: "branch", cond: Expr, condPos: Pos, body : Array<Stmt> }
 
 export type Stmt =
+  | { tag: "pass", pos: Pos }
   | { tag: "func", pos: Pos, name: string, parameters: Array<Parameter>, ret: string, body: Array<Stmt> }
   | { tag: "define", pos: Pos, name: string, staticType: string, value: Expr }
   | { tag: "assign", pos: Pos, namePos: Pos, name: string, value: Expr }

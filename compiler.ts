@@ -170,6 +170,8 @@ function codeGenRet(stmt : Stmt, env : GlobalEnv, localParams: Array<Parameter>,
 function codeGen(stmt: Stmt, env : GlobalEnv, source: string, localParams: Array<Parameter> = []) : Array<string> {
   console.log("tag: " + stmt.tag);
   switch(stmt.tag) {
+    case "pass":
+      return ["(nop)"];
     case "func":
       return codeGenFunc(stmt, env, source);
     case "return":

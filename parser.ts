@@ -187,6 +187,8 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr {
 export function traverseStmt(c : TreeCursor, s : string) : Stmt {
   console.log(c.node);
   switch(c.node.type.name) {
+    case "PassStatement":
+      return { tag: "pass", pos: getSourcePos(c, s) };
     case "FunctionDefinition":
       c.firstChild(); // Descend to the function
       c.nextSibling(); // Skip the 'def' keyword
@@ -542,6 +544,8 @@ export function tc_stmt(stmt: Stmt, source: string) : String {
   switch (stmt.tag) {
     case "expr":
       return tc_expr(stmt.expr, source);
+    case "pass":
+      return "none";
     case "define":
       const rhsType = tc_expr(stmt.value, source);
       const lhsType = stmt.staticType;
