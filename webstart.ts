@@ -95,13 +95,13 @@ function webStart() {
       document.getElementById("output").innerHTML = "";
       const replCodeElement = document.getElementById("next-code") as HTMLInputElement;
       replCodeElement.addEventListener("keypress", (e) => {
-        if(e.key === "Enter") {
+        if(e.key === "Enter" && !(e.shiftKey)) {
           const output = document.createElement("div");
           const prompt = document.createElement("span");
           prompt.innerText = "»";
           output.appendChild(prompt);
-          const elt = document.createElement("input");
-          elt.type = "text";
+          const elt = document.createElement("textarea");
+          // elt.type = "text";
           elt.disabled = true;
           elt.className = "repl-code";
           output.appendChild(elt);

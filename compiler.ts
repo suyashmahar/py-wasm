@@ -123,6 +123,12 @@ function codeGenFunc(stmt: Stmt, env : GlobalEnv, source: string) : Array<string
     result.push(header);
 
     result.push(`(local $$last i64)`)
+
+    stmt.body.forEach(bodyStmt => {
+      if (bodyStmt.tag == "define") {
+	result.push(`(local $${bodyStmt.name} i64)`);
+      }
+    });
     
     if (stmt.body != []) {
       console.log("parameters:");
@@ -182,8 +188,7 @@ function codeGen(stmt: Stmt, env : GlobalEnv, source: string, localParams: Array
 	valStmts = valStmts.concat(codeGenExpr(stmt.value, env, localParams, source));
 	return valStmts.concat([`(i64.store)`]);
       } else { // Local context
-	var valStmts = [`(local $${stmt.name} i64)`];
-	valStmts = valStmts.concat(codeGenExpr(stmt.value, env, localParams, source));
+	var valStmts = codeGenExpr(stmt.value, env, localParams, source);
 	return valStmts.concat([`(local.set $${stmt.name})`]);
       }
     case "assign":

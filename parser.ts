@@ -481,7 +481,7 @@ export function tc_binExp(pos: Pos, op : string, leftType : string, rightType : 
     case "==":
     case "!=":
       if (leftType != rightType) {
-	typeError(pos, `Operator ${op} on types that are neither both int nor bool`, source);
+	typeError(pos, `Operator ${op} on types that are neither both int nor bool (${leftType} and ${rightType})`, source);
       }
       return "bool";
     case "is":
@@ -500,10 +500,12 @@ export function tc_uExp(pos: Pos, op: string, exprType: string, source: string) 
       if (exprType != "int") {
 	typeError(pos, `Cannot use unary operator '-' with ${exprType}`, source);
       }
+      break;
     case "not":
       if (exprType != "bool") {
 	typeError(pos, `Cannot use unary operator 'not' with ${exprType}`, source);
       }
+      break;
   }
 }
 
@@ -524,30 +526,30 @@ export function tc_expr(expr : Expr, source: string, funEnv: EnvType = <EnvType>
 	return env[expr.name];
       }
     case "funcCall":
-      expr.args.forEach(s => {tc_expr(s, source)});
+      expr.args.forEach(s => {tc_expr(s, source, funEnv)});
       return "int";
     case "unaryExp":
       // if (expr.arg.tag != "bool" && expr.arg.tag != "num") {
       // 	typeError(expr.pos, `Cannot use ${expr.name} with ${tc_expr(expr.arg, source)}`, source);
       // }
-      tc_uExp(expr.pos, expr.name, tc_expr(expr.arg, source), source);
-      return tc_expr(expr.arg, source);
+      tc_uExp(expr.pos, expr.name, tc_expr(expr.arg, source, funEnv), source);
+      return tc_expr(expr.arg, source, funEnv);
     case "binExp":
-      const leftType = tc_expr(expr.arg[0], source);
-      const rightType = tc_expr(expr.arg[1], source);
+      const leftType = tc_expr(expr.arg[0], source, funEnv);
+      const rightType = tc_expr(expr.arg[1], source, funEnv);
       const op = expr.name;
       return tc_binExp(expr.pos, op, leftType, rightType, source);
   }
 }
 
-export function tc_stmt(stmt: Stmt, source: string) : String {
+export function tc_stmt(stmt: Stmt, source: string, funEnv: EnvType = <EnvType>{}) : String {
   switch (stmt.tag) {
     case "expr":
-      return tc_expr(stmt.expr, source);
+      return tc_expr(stmt.expr, source, funEnv);
     case "pass":
       return "none";
     case "define":
-      const rhsType = tc_expr(stmt.value, source);
+      const rhsType = tc_expr(stmt.value, source, funEnv);
       const lhsType = stmt.staticType;
 
       console.log(`Found definition of ${stmt.name}`);
@@ -566,41 +568,43 @@ export function tc_stmt(stmt: Stmt, source: string) : String {
       }
       
       const assignLhsType = env[stmt.name]
-      const assignRhsType = tc_expr(stmt.value, source);
+      const assignRhsType = tc_expr(stmt.value, source, funEnv);
       if (assignLhsType != assignRhsType) {
 	const errMsg = `Value of type ${assignRhsType} to '${stmt.name}' which is of type ${assignLhsType}`;
 	typeError(stmt.pos, errMsg, source);
       }
       return "None";
     case "while":
-      const whileCondType = tc_expr(stmt.cond, source);
+      console.log("funEnv:");
+      console.log(funEnv);
+      const whileCondType = tc_expr(stmt.cond, source, funEnv);
 
       if (whileCondType != "bool") {
-	typeError(stmt.cond.pos, `While condition expected bool but got ${whileCondType}.`, source);
+	typeError(stmt.cond.pos, `While condition expected a bool, found ${whileCondType}.`, source);
       }
       return "None";
     case "if":
-      const condType = tc_expr(stmt.cond, source);
+      const condType = tc_expr(stmt.cond, source, funEnv);
 
       if (condType != "bool") {
 	typeError(stmt.condPos, `If condition expected bool but got ${condType}`, source);
       }
       return "None";
     case "return":
-      const retType = tc_expr(stmt.expr, source);
+      const retType = tc_expr(stmt.expr, source, funEnv);
 
       return retType;
     case "func":
-      var funEnv: EnvType = <EnvType>{};
       stmt.body.forEach(s => {
 	if (s.tag == "define") {
 	  funEnv[s.name] = s.staticType;
 	}
       });
       
-      console.log(funEnv);
+      stmt.parameters.forEach(param => { funEnv[param.name] = param.type; });
 
       stmt.body.forEach(s => {
+	tc_stmt(s, source, funEnv);
 	if (s.tag == "return") {
 	  const retType = tc_expr(s.expr, source, funEnv);
 	  if (retType != stmt.ret) {
