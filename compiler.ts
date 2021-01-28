@@ -181,7 +181,8 @@ function codeGen(stmt: Stmt, env : GlobalEnv, source: string, localParams: Array
 	return valStmts.concat([`(i64.store)`]);
       } else { // Local context
 	var valStmts = [`(local $${stmt.name} i64)`];
-	return valStmts;
+	valStmts = valStmts.concat(codeGenExpr(stmt.value, env, localParams, source));
+	return valStmts.concat([`(local.set $${stmt.name})`]);
       }
     case "assign":
       if (getLocal(localParams, stmt.name)) {
@@ -196,6 +197,9 @@ function codeGen(stmt: Stmt, env : GlobalEnv, source: string, localParams: Array
       return exprStmts.concat([`(local.set $$last)`]);
     case "if":
       var result: Array<string> = [];
+
+      console.log("Branches:");
+      console.log(stmt.branches);
 
       // Push the condition to the stack
       result = result.concat(codeGenExpr(stmt.cond, env, localParams, source));
@@ -214,7 +218,21 @@ function codeGen(stmt: Stmt, env : GlobalEnv, source: string, localParams: Array
       // Close if body
       result = result.concat(") ");
 
-      if (stmt.elseBody != []) {
+      if (stmt.elseBody != [] && stmt.branches != []) {
+	if (stmt.branches != []) {
+	  stmt.branches.forEach(branch => {
+	    result.push(" (else ");
+	    result = result.concat(codeGenExpr(branch.cond, env, localParams, source));
+	    result.push("(if ");
+	    result = result.concat("(i32.wrap/i64) (then ");
+
+	    branch.body.forEach(s => {
+	      result = result.concat(codeGen(s, env, source, localParams));
+	    });
+
+	    result.push(")");
+	  });
+	}
 	// The else block
 	result = result.concat("(else ");
 
@@ -225,6 +243,7 @@ function codeGen(stmt: Stmt, env : GlobalEnv, source: string, localParams: Array
 
 	// Close the else body
 	result = result.concat(")");
+	result.push(")\n".repeat(stmt.branches.length*2));
       }
 
       result = result.concat(")");

@@ -1,9 +1,8 @@
 // -*- mode: typescript; typescript-indent-level: 2; -*-
 
-import {parser} from "lezer-python";
-import {TreeCursor} from "lezer-tree";
-import { Expression } from "typescript";
-import {Expr, Stmt, Parameter, Pos} from "./ast";
+import { parser } from "lezer-python";
+import { TreeCursor } from "lezer-tree";
+import { Expr, Stmt, Parameter, Pos, Branch } from "./ast";
 
 type EnvType = Record<string, string>;
 export var env : EnvType = {};
@@ -27,8 +26,13 @@ export function padNum(num: number, width: number): string {
 
 export function getDecorator(pos: Pos, source: string): string {
   const splitSource = source.split("\n");
-  const errLinesArr = [padNum(pos.line-1, 4) + "| " + splitSource[pos.line-2],
+  var errLinesArr = [padNum(pos.line-1, 4) + "| " + splitSource[pos.line-2],
 		       padNum(pos.line, 4) + "| " + splitSource[pos.line-1]];
+
+  if (pos.line == 1) {
+    errLinesArr = [errLinesArr[1]];
+  }
+  
   const errLines = errLinesArr.join("\n");
   const decorator = " ".repeat(pos.col+5) + "^".repeat(pos.len);
   
@@ -46,6 +50,7 @@ export const typeError = (pos: Pos, msg: string, source: string) => genericError
 export const symLookupError = (pos: Pos, msg: string, source: string) => genericError('SymbolLookupError', pos, msg, source);
 export const argError = (pos: Pos, msg: string, source: string) => genericError('ArgumentError', pos, msg, source);
 export const scopeError = (pos: Pos, msg: string, source: string) => genericError('ScopeError', pos, msg, source);
+export const parseError = (pos: Pos, msg: string, source: string) => genericError('ParseError', pos, msg, source);
 
 
 export function traverseExpr(c : TreeCursor, s : string) : Expr {
@@ -98,20 +103,23 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr {
       
       c.firstChild();  // go into arglist
       c.nextSibling(); // find single argument in arglist
-      
-      var args: Array<Expr> = [traverseExpr(c, s)];
-      c.nextSibling();
-      
-      while (c.node.type.name != ')') {
-      	c.nextSibling(); // pop the comma
-	
-	console.log("<50> " + c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
-	args.push(traverseExpr(c, s));
-	c.nextSibling();
-  
-	console.log("<54> " + c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
-      }
 
+      var args: Array<Expr> = [];
+      var prmsPosArr: Array<Pos> = [];
+      
+      if (s.substring(c.node.from, c.node.to) != ")") {
+	args = [traverseExpr(c, s)];
+	prmsPosArr = [getSourcePos(c, s)];
+	c.nextSibling();
+	
+	while (c.node.type.name != ')') {
+      	  c.nextSibling(); // pop the comma
+	  
+	  args.push(traverseExpr(c, s));
+	  prmsPosArr.push(getSourcePos(c, s));
+	  c.nextSibling();
+	}
+      }
       c.parent(); // pop arglist
       c.parent(); // pop CallExpression
       
@@ -119,6 +127,7 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr {
         tag: "funcCall",
 	pos: cExpPos,
 	prmPos: prmPos,
+	prmsPosArr: prmsPosArr,
         name: callName,
         args: args
       };
@@ -171,7 +180,7 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr {
       return expr;
     default:
       console.log(c);
-      throw new Error("Could not parse expr at " + c.from + " " + c.to + ": " + s.substring(c.from, c.to));
+      parseError(getSourcePos(c, s), `Parser failed (miserably), could not parse the expression.`, s); 
   }
 }
 
@@ -273,25 +282,61 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
       c.parent();
 
       var elseBody : Array<Stmt> = [];
-      var branches = [];
+      var branches : Array<Branch> = [];
       
       
       // Check for elif/else
       while (c.nextSibling()) {
       	const branchName = s.substring(c.node.from, c.node.to)
+	console.log(`Branch name: ${branchName}`);
+	
 	switch (branchName) {
 	  case "else":
-	    console.log("Found else statement");
 	    
 	    c.nextSibling(); // Skip the keyword
 	    c.firstChild(); // Get to the body
 	    c.nextSibling(); // Skip the colon
-	    console.log("<++> " + c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
+	    
 	    do {
 	      elseBody = elseBody.concat(traverseStmt(c, s));
 	    } while (c.nextSibling());
+
+	    c.parent();
+	    break;
+	  case "elif":
+	    console.log("Found elif statement");
+
+	    console.log("<307> " + c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
+	    
+	    c.nextSibling(); // Skip the keyword
+
+	    console.log("<310> " + c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
+   
+	    const condPos : Pos = getSourcePos(c, s);
+	    const cond : Expr = traverseExpr(c, s);
+	    var elifBody : Array<Stmt> = [];
+
+	    c.nextSibling(); 
+	    console.log("<318> " + c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
+	    c.firstChild(); // Get to the body
+	    c.nextSibling(); // Skip the colon
+	    console.log("<++> " + c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
+	    do {
+	      elifBody = elifBody.concat(traverseStmt(c, s));
+	    } while (c.nextSibling());
 	    console.log("<++> " + c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
 	    c.parent();
+
+	    const entry : Branch = {
+	      tag: "branch",
+	      cond: cond,
+	      condPos: condPos,
+	      body: elifBody
+	    };
+	    
+	    branches.push(entry);
+	    
+	    break;
 	}
       }
 
@@ -301,7 +346,7 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
 	condPos: condPos,
 	cond: cond,
 	ifBody: ifBody,
-	branches: [],
+	branches: branches,
 	elseBody: elseBody
       }
 
@@ -395,7 +440,7 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
       c.parent();
       return { tag: "return", pos: getSourcePos(c, s), expr: retExpr };
     default:
-      throw new Error("Could not parse stmt at " + c.node.from + " " + c.node.to + ": " + s.substring(c.from, c.to));
+      typeError(getSourcePos(c, s), `Could not parse stmt, failed miserably`, s);
   }
 }
 
@@ -439,7 +484,7 @@ export function tc_binExp(pos: Pos, op : string, leftType : string, rightType : 
       return "bool";
     case "is":
       if (leftType != "none" || rightType != "none") {
-	typeError(pos, `Operator is used on non-None types, ${leftType} and ${rightType}`, source);
+	typeError(pos, `Operator \`is\` used on non-None types, ${leftType} and ${rightType}`, source);
       }
       return "bool";
     default:
@@ -480,9 +525,9 @@ export function tc_expr(expr : Expr, source: string, funEnv: EnvType = <EnvType>
       expr.args.forEach(s => {tc_expr(s, source)});
       return "int";
     case "unaryExp":
-      if (expr.arg.tag != "bool" && expr.arg.tag != "num") {
-	typeError(expr.pos, `Cannot use ${expr.name} with ${tc_expr(expr.arg, source)}`, source);
-      }
+      // if (expr.arg.tag != "bool" && expr.arg.tag != "num") {
+      // 	typeError(expr.pos, `Cannot use ${expr.name} with ${tc_expr(expr.arg, source)}`, source);
+      // }
       tc_uExp(expr.pos, expr.name, tc_expr(expr.arg, source), source);
       return tc_expr(expr.arg, source);
     case "binExp":
