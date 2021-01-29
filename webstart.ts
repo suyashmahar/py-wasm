@@ -3,11 +3,19 @@
 import {BasicREPL} from './repl';
 import {emptyEnv, GlobalEnv} from './compiler';
 import {run} from './runner';
+// import * as acemodule from 'ace-builds/src-noconflict/ace';
+import * as ace from 'brace';
+import 'brace/mode/python';
+import 'brace/theme/monokai';
 
+var editor: ace.Editor = undefined;
 
 function webStart() {
-
   document.addEventListener("DOMContentLoaded", function() {
+    editor = ace.edit("user-code"); // sourceElem.value.replace(/\t/g, '    ');
+    editor.setTheme("ace/theme/textmate");
+    editor.session.setMode("ace/mode/python");
+    
     var importObject = {
       imports: {
         print: (arg : any) => {
@@ -118,8 +126,11 @@ function webStart() {
 
     document.getElementById("run").addEventListener("click", function(e) {
       repl = new BasicREPL(importObject);
+
+      // const sourceElem = document.getElementById("user-code") as HTMLTextAreaElement;
       const sourceElem = document.getElementById("user-code") as HTMLTextAreaElement;
-      const source = sourceElem.value.replace(/\t/g, '    ');
+      // const source = sourceElem.value.replace(/\t/g, '    ');
+      const source = editor.getValue();
       setupRepl();
       //   const output = document.getElementById("output").innerHTML = "";
       repl.run(source).then((r) => { renderResult(r); console.log ("run finished") })

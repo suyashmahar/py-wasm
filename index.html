@@ -5,6 +5,7 @@
     <script src="https://cdn.jsdelivr.net/gh/AssemblyScript/wabt.js@1.0.20/index.js"></script>
     <script>const wabt = WabtModule;</script>
     <script src="webstart.js"></script>
+
     <style>
         .editor {
             float: left;
@@ -47,7 +48,7 @@
 <body>
     <div class="editor">
     <button id="run">Run!</button><br/>
-    <textarea class="user-code" id="user-code"></textarea>
+    <div class="user-code language-python" id="user-code"></div>
     </div>
 
     <div class="interactions">
