@@ -19,11 +19,7 @@ export class BasicREPL {
     }
     this.currentEnv = {
       globals: new Map(),
-      funcs: new Map([['print', [1, 'int']],
-		      ['abs',   [1, 'int']],
-		      ['max',   [2, 'int']],
-		      ['min',   [2, 'int']],
-		      ['pow',   [2, 'int']],
+      funcs: new Map([['print', [["any"], 'int']],
 		     ]),
       offset: 0
     };

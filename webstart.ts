@@ -118,10 +118,11 @@ function webStart() {
 
     document.getElementById("run").addEventListener("click", function(e) {
       repl = new BasicREPL(importObject);
-      const source = document.getElementById("user-code") as HTMLTextAreaElement;
+      const sourceElem = document.getElementById("user-code") as HTMLTextAreaElement;
+      const source = sourceElem.value.replace(/\t/g, '    ');
       setupRepl();
       //   const output = document.getElementById("output").innerHTML = "";
-      repl.run(source.value).then((r) => { renderResult(r); console.log ("run finished") })
+      repl.run(source).then((r) => { renderResult(r); console.log ("run finished") })
         .catch((e) => { renderError(e); console.log("run failed", e) });;
     });
   });

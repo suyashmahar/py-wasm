@@ -4,9 +4,6 @@ import { parser } from "lezer-python";
 import { TreeCursor } from "lezer-tree";
 import { Expr, Stmt, Parameter, Pos, Branch } from "./ast";
 
-type EnvType = Record<string, string>;
-export var env : EnvType = {};
-
 export function getSourcePos(c : TreeCursor, s : string) : Pos {
   const substring = s.substring(0, c.node.to);
   const line = substring.split("\n").length;
@@ -216,7 +213,7 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
 	paramList = paramList.concat({
 	  tag: "parameter",
 	  name: varName,
-	  type: paramType
+	  type: paramType,
 	});
 
 	c.nextSibling(); // go to the next token (',', ')')
@@ -290,7 +287,6 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
       // Check for elif/else
       while (c.nextSibling()) {
       	const branchName = s.substring(c.node.from, c.node.to)
-	console.log(`Branch name: ${branchName}`);
 	
 	switch (branchName) {
 	  case "else":
@@ -306,27 +302,21 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
 	    c.parent();
 	    break;
 	  case "elif":
-	    console.log("Found elif statement");
-
-	    console.log("<307> " + c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
-	    
 	    c.nextSibling(); // Skip the keyword
-
-	    console.log("<310> " + c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
    
 	    const condPos : Pos = getSourcePos(c, s);
 	    const cond : Expr = traverseExpr(c, s);
 	    var elifBody : Array<Stmt> = [];
 
 	    c.nextSibling(); 
-	    console.log("<318> " + c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
+
 	    c.firstChild(); // Get to the body
 	    c.nextSibling(); // Skip the colon
-	    console.log("<++> " + c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
+
 	    do {
 	      elifBody = elifBody.concat(traverseStmt(c, s));
 	    } while (c.nextSibling());
-	    console.log("<++> " + c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
+
 	    c.parent();
 
 	    const entry : Branch = {
@@ -461,172 +451,9 @@ export function traverse(c : TreeCursor, s : string) : Array<Stmt> {
   }
 }
 
-export function tc_binExp(pos: Pos, op : string, leftType : string, rightType : String, source: string) : string {
-  switch (op) {
-    case "-":
-    case "+":
-    case "*":
-    case "%":
-    case "//":
-      console.log("arguments are: " + leftType + " and " + rightType);
-      if (leftType != "int" || rightType != "int") {
-	const errMsg = `Operator ${op} expects both args to be int, got ${leftType} and ${rightType}`;
-	typeError(pos, errMsg, source);
-      }
-      return "int";
-    case ">=":
-    case "<=":
-    case ">":
-    case "<":
-    case "==":
-    case "!=":
-      if (leftType != rightType) {
-	typeError(pos, `Operator ${op} on types that are neither both int nor bool (${leftType} and ${rightType})`, source);
-      }
-      return "bool";
-    case "is":
-      if (leftType != "none" || rightType != "none") {
-	typeError(pos, `Operator \`is\` used on non-None types, ${leftType} and ${rightType}`, source);
-      }
-      return "bool";
-    default:
-      throw "Unknown operator " + op;
-  }
-}
-
-export function tc_uExp(pos: Pos, op: string, exprType: string, source: string) {
-  switch (op) {
-    case "-":
-      if (exprType != "int") {
-	typeError(pos, `Cannot use unary operator '-' with ${exprType}`, source);
-      }
-      break;
-    case "not":
-      if (exprType != "bool") {
-	typeError(pos, `Cannot use unary operator 'not' with ${exprType}`, source);
-      }
-      break;
-  }
-}
-
-export function tc_expr(expr : Expr, source: string, funEnv: EnvType = <EnvType>{}):string {
-  console.log("Checking expression:");
-  console.log(expr);
-  switch(expr.tag) {
-    case "bool":
-      return "bool";
-    case "num":
-      return "int";
-    case "none":
-      return "none";
-    case "id":
-      if (funEnv[expr.name] != undefined) {
-	return funEnv[expr.name];
-      } else {
-	return env[expr.name];
-      }
-    case "funcCall":
-      expr.args.forEach(s => {tc_expr(s, source, funEnv)});
-      return "int";
-    case "unaryExp":
-      // if (expr.arg.tag != "bool" && expr.arg.tag != "num") {
-      // 	typeError(expr.pos, `Cannot use ${expr.name} with ${tc_expr(expr.arg, source)}`, source);
-      // }
-      tc_uExp(expr.pos, expr.name, tc_expr(expr.arg, source, funEnv), source);
-      return tc_expr(expr.arg, source, funEnv);
-    case "binExp":
-      const leftType = tc_expr(expr.arg[0], source, funEnv);
-      const rightType = tc_expr(expr.arg[1], source, funEnv);
-      const op = expr.name;
-      return tc_binExp(expr.pos, op, leftType, rightType, source);
-  }
-}
-
-export function tc_stmt(stmt: Stmt, source: string, funEnv: EnvType = <EnvType>{}) : String {
-  switch (stmt.tag) {
-    case "expr":
-      return tc_expr(stmt.expr, source, funEnv);
-    case "pass":
-      return "none";
-    case "define":
-      const rhsType = tc_expr(stmt.value, source, funEnv);
-      const lhsType = stmt.staticType;
-
-      console.log(`Found definition of ${stmt.name}`);
-      
-      if (rhsType != lhsType) {
-	const errMsg = `${rhsType} value assigned to '${stmt.name}' which is of type ${lhsType}`;
-	typeError(stmt.pos, errMsg, source);
-      }
-
-      env[stmt.name] = stmt.staticType;
-      
-      return stmt.staticType;
-    case "assign":
-      if (env[stmt.name] == undefined) {
-	symLookupError(stmt.namePos, `Cannot find value '${stmt.name}' in current scope`, source);
-      }
-      
-      const assignLhsType = env[stmt.name]
-      const assignRhsType = tc_expr(stmt.value, source, funEnv);
-      if (assignLhsType != assignRhsType) {
-	const errMsg = `Value of type ${assignRhsType} to '${stmt.name}' which is of type ${assignLhsType}`;
-	typeError(stmt.pos, errMsg, source);
-      }
-      return "None";
-    case "while":
-      console.log("funEnv:");
-      console.log(funEnv);
-      const whileCondType = tc_expr(stmt.cond, source, funEnv);
-
-      if (whileCondType != "bool") {
-	typeError(stmt.cond.pos, `While condition expected a bool, found ${whileCondType}.`, source);
-      }
-      return "None";
-    case "if":
-      const condType = tc_expr(stmt.cond, source, funEnv);
-
-      if (condType != "bool") {
-	typeError(stmt.condPos, `If condition expected bool but got ${condType}`, source);
-      }
-      return "None";
-    case "return":
-      const retType = tc_expr(stmt.expr, source, funEnv);
-
-      return retType;
-    case "func":
-      stmt.body.forEach(s => {
-	if (s.tag == "define") {
-	  funEnv[s.name] = s.staticType;
-	}
-      });
-      
-      stmt.parameters.forEach(param => { funEnv[param.name] = param.type; });
-
-      stmt.body.forEach(s => {
-	tc_stmt(s, source, funEnv);
-	if (s.tag == "return") {
-	  const retType = tc_expr(s.expr, source, funEnv);
-	  if (retType != stmt.ret) {
-	    const throwMsg = `Return's type ${retType} and function's return type ${stmt.ret} don't match`;
-	    typeError(s.pos, throwMsg, source);
-	  }
-	}
-      });
-  }
-}
-
-export function typecheck(ast : Array<Stmt>, source: string) : String {
-  ast.forEach(stmt => {
-    const staticType = tc_stmt(stmt, source);
-  });
-
-  return "Done";
-}
 
 export function parse(source : string) : Array<Stmt> {
   const t = parser.parse(source);
   const ast = traverse(t.cursor(), source);
-  typecheck(ast, source);
   return ast;
 }

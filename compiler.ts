@@ -2,6 +2,7 @@
 
 import { Stmt, Expr, Parameter, Pos } from "./ast";
 import { parse, typeError, symLookupError, argError, scopeError } from "./parser";
+import { typecheck }  from "./tc";
 
 // https://learnxinyminutes.com/docs/wasm/
 
@@ -14,9 +15,9 @@ export const NONE_VAL = "2305843009213693952"; // 1<<62
 // Numbers are offsets into global memory
 export type GlobalEnv = {
   globals: Map<string, number>;
-  funcs: Map<string, [number, string]>; // Stores the number of
-				      // arguments and return type for
-				      // a functions
+  funcs: Map<string, [Array<string>, string]>; // Stores the argument
+					       // types and return
+					       // type for a functions
   offset: number;
 }
 
@@ -60,7 +61,11 @@ export function augmentEnv(env: GlobalEnv, stmts: Array<Stmt>) : GlobalEnv {;
         newOffset += 8;
         break;
       case "func":
-	newFuncs.set(s.name, [s.parameters.length, s.ret]);
+	const paramTypes: Array<string> = [];
+	s.parameters.forEach(param => {
+	  paramTypes.push(param.type);
+	});
+	newFuncs.set(s.name, [paramTypes, s.ret]);
 	break;
     }
   })
@@ -72,6 +77,11 @@ export function augmentEnv(env: GlobalEnv, stmts: Array<Stmt>) : GlobalEnv {;
 }
 
 export function compile(source: string, env: GlobalEnv) : CompileResult {
+  var funcsStr = "";
+  funcs.forEach(fun => {
+    funcsStr = funcsStr.concat(fun.join("\n"))
+  });
+
   const ast = parse(source);
   const definedVars = new Set();
   ast.forEach(s => {
@@ -85,13 +95,12 @@ export function compile(source: string, env: GlobalEnv) : CompileResult {
   const localDefines = [scratchVar];
   
   const withDefines = augmentEnv(env, ast);
+
+  /* Typecheck stuff */
+  typecheck(ast, source, withDefines);
+  
   const commandGroups = ast.map((stmt) => codeGen(stmt, withDefines, source));
   const commands = localDefines.concat([].concat.apply([], commandGroups));
-
-  var funcsStr = "";
-  funcs.forEach(fun => {
-    funcsStr = funcsStr.concat(fun.join("\n"))
-  });
   
   console.log("Generated: ", commands.join("\n"));
   return {
@@ -359,25 +368,9 @@ function codeGenExpr(expr : Expr, env : GlobalEnv, localParams : Array<Parameter
       expr.args.forEach(arg => {
 	argStmts = argStmts.concat(codeGenExpr(arg, env, localParams, source));
       });
-
-      if (env.funcs.get(expr.name) == undefined) {
-	scopeError(expr.pos, `Function not in scope: ${expr.name}`, source);
-      }
-
-      const argsExpected = env.funcs.get(expr.name)[0];
-      const argsProvided = expr.args.length;
-      if (argsExpected != argsProvided) {
-	argError(expr.prmPos, `${expr.name}() needs ${argsExpected} arguments, ${argsProvided} provided`, source);
-      }
-
-      console.log("args:");
-      console.log(expr.args);
       
       const result = argStmts.concat([`(call $${expr.name})`]);
 
-      console.log("result: ");
-      console.log(result);
-      
       return result;
     case "bool":
       if (expr.value == true) {
