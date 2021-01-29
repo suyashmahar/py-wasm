@@ -77,11 +77,6 @@ export function augmentEnv(env: GlobalEnv, stmts: Array<Stmt>) : GlobalEnv {;
 }
 
 export function compile(source: string, env: GlobalEnv) : CompileResult {
-  var funcsStr = "";
-  funcs.forEach(fun => {
-    funcsStr = funcsStr.concat(fun.join("\n"))
-  });
-
   const ast = parse(source);
   const definedVars = new Set();
   ast.forEach(s => {
@@ -101,6 +96,11 @@ export function compile(source: string, env: GlobalEnv) : CompileResult {
   
   const commandGroups = ast.map((stmt) => codeGen(stmt, withDefines, source));
   const commands = localDefines.concat([].concat.apply([], commandGroups));
+
+  var funcsStr = "";
+  funcs.forEach(fun => {
+    funcsStr = funcsStr.concat(fun.join("\n"))
+  });
   
   console.log("Generated: ", commands.join("\n"));
   return {

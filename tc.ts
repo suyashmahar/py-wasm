@@ -92,6 +92,12 @@ export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
       if (whileCondType != "bool") {
 	typeError(stmt.cond.pos, `While condition expected a bool, found ${whileCondType}.`, source);
       }
+
+      // Check the body
+      stmt.whileBody.forEach(s => {
+	tc_stmt(s, source, gblEnv, funEnv);
+      });
+      
       return "None";
     case "if":
       const condType = tc_expr(stmt.cond, source, gblEnv, funEnv);
@@ -150,16 +156,20 @@ export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: 
   switch(expr.tag) {
     case "bool":
       return "bool";
+      
     case "num":
       return "int";
+      
     case "none":
       return "none";
+      
     case "id":
       if (funEnv[expr.name] != undefined) {
 	return funEnv[expr.name];
       } else {
 	return env[expr.name];
       }
+      
     case "funcCall":
       if (gblEnv.funcs.get(expr.name) == undefined) {
 	scopeError(expr.pos, `Function not in scope: ${expr.name}`, source);
@@ -184,9 +194,11 @@ export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: 
 	argIter += 1;
       });
       return "int";
+      
     case "unaryExp":
       tc_uExp(expr.pos, expr.name, tc_expr(expr.arg, source, gblEnv, funEnv), source);
       return tc_expr(expr.arg, source, gblEnv, funEnv);
+      
     case "binExp":
       const leftType = tc_expr(expr.arg[0], source, gblEnv, funEnv);
       const rightType = tc_expr(expr.arg[1], source, gblEnv, funEnv);
