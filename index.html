@@ -5,6 +5,7 @@
     <script src="https://cdn.jsdelivr.net/gh/AssemblyScript/wabt.js@1.0.20/index.js"></script>
     <script>const wabt = WabtModule;</script>
     <script src="webstart.js"></script>
+
     <style>
         .editor {
             float: left;
@@ -27,6 +28,9 @@
             padding: 0;
             height: 100%;
         }
+	.headers {
+	    font-family: monospace;
+	}
         .repl-code {
             height: 2em;
             width: 30em;
@@ -41,21 +45,88 @@
             white-space: break-spaces;
             line-break: anywhere;
         }
+
+	
+	/* The dropdown container */
+	.dropdown {
+	    float: left;
+	    overflow: hidden;
+	    z-index: 999;
+	}
+
+	/* Dropdown button */
+	.dropdown .dropbtn {
+	    font-size: 16px;
+	    border: none;
+	    outline: none;
+	    color: black;
+	    padding: 10px 10px;
+	    margin: 4px 4px;
+	    background-color: inherit;
+	    /* font-family: inherit; /\* Important for vertical align on mobile phones *\/ */
+	    margin: 0; /* Important for vertical align on mobile phones */
+	}
+
+	/* Add a red background color to navbar links on hover */
+	.navbar a:hover, .dropdown:hover .dropbtn {
+	    background-color: gainsboro;
+	}
+
+	/* Dropdown content (hidden by default) */
+	.dropdown-content {
+	    display: none;
+	    position: absolute;
+	    background-color: #f9f9f9;
+	    min-width: 160px;
+	    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+	    z-index: 999;
+	}
+
+	/* Links inside the dropdown */
+	.dropdown-content a {
+	    float: none;
+	    color: black;
+	    padding: 12px 16px;
+	    text-decoration: none;
+	    display: block;
+	    text-align: left;
+	}
+
+	/* Add a grey background color to dropdown links on hover */
+	.dropdown-content a:hover {
+	    background-color: #ddd;
+	}
+
+	/* Show the dropdown menu on hover */
+	.dropdown:hover .dropdown-content {
+	    display: block;
+	}
     </style>
 </head>
 
 <body>
     <div class="editor">
-    <button id="run">Run!</button><br/>
-    <textarea class="user-code" id="user-code"></textarea>
+      <div class="dropdown">
+	<button class="dropbtn">Examples
+	  <i class="fa fa-caret-down"></i>
+	</button>
+	<div class="dropdown-content">
+	  <a id="pattern-print" href="#">Pattern print</a>
+	  <a id="test-python" href="#">Test</a>
+	</div>
+      </div>
+      <button id="run">Run!</button><br/>
+      <div class="user-code language-python" id="user-code"></div>    
     </div>
 
     <div class="interactions">
+        <h3 class="headers">Output</h3>
         <div class="output" id="output">
         </div>
+        <h3 class="headers">Repl</h3>
         <div id="repl-entry">
             <span class="prompt"><code>»</code></span>
-            <input type="text" id="next-code" class="repl-code"></textarea>
+            <textarea type="text" id="next-code" class="repl-code"></textarea>
         </div>
     </div>
 </body>
