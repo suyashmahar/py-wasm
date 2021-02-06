@@ -141,20 +141,20 @@ export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
 
       return retType;
     case "func":
-      stmt.body.forEach(s => {
+      stmt.content.body.forEach(s => {
 	if (s.tag == "define") {
 	  funEnv[s.name] = s.staticType;
 	}
       });
       
-      stmt.parameters.forEach(param => { funEnv[param.name] = param.type; });
+      stmt.content.parameters.forEach(param => { funEnv[param.name] = param.type; });
 
-      stmt.body.forEach(s => {
+      stmt.content.body.forEach(s => {
 	tc_stmt(s, source, gblEnv, funEnv);
 	if (s.tag == "return") {
 	  const retType = tc_expr(s.expr, source, gblEnv, funEnv);
-	  if (retType != stmt.ret) {
-	    const throwMsg = `Return's type ${tr(retType)} and function's return type ${tr(stmt.ret)} don't match`;
+	  if (retType != stmt.content.ret) {
+	    const throwMsg = `Return's type ${tr(retType)} and function's return type ${tr(stmt.content.ret)} don't match`;
 	    typeError(s.pos, throwMsg, source);
 	  }
 	}

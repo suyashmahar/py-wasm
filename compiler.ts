@@ -64,10 +64,10 @@ export function augmentEnv(env: GlobalEnv, stmts: Array<Stmt>) : GlobalEnv {;
         break;
       case "func":
 	const paramTypes: Array<Type> = [];
-	s.parameters.forEach(param => {
+	s.content.parameters.forEach(param => {
 	  paramTypes.push(param.type);
 	});
-	newFuncs.set(s.name, [paramTypes, s.ret]);
+	newFuncs.set(s.content.name, [paramTypes, s.content.ret]);
 	break;
     }
   })
@@ -116,14 +116,14 @@ function codeGenFunc(stmt: Stmt, env : GlobalEnv, source: string) : Array<string
   if (stmt.tag == "func") {
     var result: Array<string> = [];
 
-    var header = `(func $${stmt.name}`;
-    var funcLocals:Array<Parameter> = stmt.parameters;
+    var header = `(func $${stmt.content.name}`;
+    var funcLocals:Array<Parameter> = stmt.content.parameters;
 
-    stmt.parameters.forEach(param => {
+    stmt.content.parameters.forEach(param => {
       header += ` (param $${param.name} i64) `;
     });
 
-    stmt.body.forEach(s => {
+    stmt.content.body.forEach(s => {
       if (s.tag == "define") {
 	funcLocals.push({tag : "parameter", name: s.name, type: s.staticType});
       }
@@ -135,22 +135,22 @@ function codeGenFunc(stmt: Stmt, env : GlobalEnv, source: string) : Array<string
 
     result.push(`(local $$last i64)`)
 
-    stmt.body.forEach(bodyStmt => {
+    stmt.content.body.forEach(bodyStmt => {
       if (bodyStmt.tag == "define") {
 	result.push(`(local $${bodyStmt.name} i64)`);
       }
     });
     
-    if (stmt.body != []) {
+    if (stmt.content.body != []) {
       console.log("parameters:");
-      console.log(stmt.parameters);
-      stmt.body.forEach(s => {
-	result = result.concat(codeGen(s, env, source, stmt.parameters));
+      console.log(stmt.content.parameters);
+      stmt.content.body.forEach(s => {
+	result = result.concat(codeGen(s, env, source, stmt.content.parameters));
       });
 
     }
 
-    if (stmt.ret != NoneT) {
+    if (stmt.content.ret != NoneT) {
       // result.push(`(local.get $$last)`);
     } else { // Return None
       result.push(`(i64.const ${NONE_VAL})`); // 1UL << 62

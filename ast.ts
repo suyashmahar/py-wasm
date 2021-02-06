@@ -17,18 +17,22 @@ export type Type =
   | {tag: "class", name: string}
 
 export const BoolT: Type  = { tag: "bool" }
-export const IntT: Type   = { tag: "number" }
+export const IntT:  Type  = { tag: "number" }
 export const NoneT: Type  = { tag: "none" }
+
+export type ClassBody = { iVars: Array<Stmt>, funcs: Array<Function> };
+export type Function = { pos: Pos, name: string, parameters: Array<Parameter>, ret: Type, body: Array<Stmt> };
 
 export type Stmt =
   | { tag: "pass", pos: Pos }
-  | { tag: "func", pos: Pos, name: string, parameters: Array<Parameter>, ret: Type, body: Array<Stmt> }
+  | { tag: "func", content: Function }
   | { tag: "define", pos: Pos, name: string, staticType: Type, value: Expr }
   | { tag: "assign", pos: Pos, namePos: Pos, name: string, value: Expr }
   | { tag: "expr", expr: Expr }
   | { tag: "while", cond: Expr, whileBody: Array<Stmt> }
   | { tag: "if", cond: Expr, condPos: Pos, ifBody: Array<Stmt>, branches: Array<Branch>, elseBody: Array<Stmt> }
   | { tag: "return", pos: Pos, expr: Expr }
+  | { tag: "class", pos: Pos, name: string, namePos: Pos, body: ClassBody }
 
 export type Expr =
   | { tag: "num", pos: Pos, value: number }

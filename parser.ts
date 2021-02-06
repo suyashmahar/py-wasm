@@ -49,7 +49,6 @@ export const argError = (pos: Pos, msg: string, source: string) => genericError(
 export const scopeError = (pos: Pos, msg: string, source: string) => genericError('ScopeError', pos, msg, source);
 export const parseError = (pos: Pos, msg: string, source: string) => genericError('ParseError', pos, msg, source);
 
-
 export function traverseExpr(c : TreeCursor, s : string) : Expr {
   switch(c.type.name) {
     case "Boolean":
@@ -87,8 +86,7 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr {
         tag: "id",
 	pos: idPos,
 	name: s.substring(c.from, c.to)
-      }
-
+      }     
     case "CallExpression":
       const cExpPos = getSourcePos(c, s);
       
@@ -194,11 +192,17 @@ export function parseType(source: string, typeStr : string, pos: Pos) : Type {
   }
 }
 
+export function traverseClass(c: TreeCursor, s: string): Stmt {
+  return;
+}
+
 export function traverseStmt(c : TreeCursor, s : string) : Stmt {
   console.log(c.node);
   switch(c.node.type.name) {
     case "PassStatement":
       return { tag: "pass", pos: getSourcePos(c, s) };
+    case "ClassDefinition":
+      return traverseClass(c, s);
     case "FunctionDefinition":
       c.firstChild(); // Descend to the function
       c.nextSibling(); // Skip the 'def' keyword
@@ -268,11 +272,13 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
       
       const resultVal: Stmt = {
 	tag: "func",
-	pos: getSourcePos(c, s),
-	name: funName,
-	parameters: paramList,
-	ret: retType,
-	body: bodyStmts	
+	content: {
+	  pos: getSourcePos(c, s),
+	  name: funName,
+	  parameters: paramList,
+	  ret: retType,
+	  body: bodyStmts
+	}
       }
 
       return resultVal;

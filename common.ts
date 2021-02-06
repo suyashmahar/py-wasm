@@ -22,7 +22,7 @@ export function strToType(str: string): Type {
       return NoneT;
     case "int":
       return IntT;
-    case "boll":
+    case "bool":
       return BoolT;
     default:
       throw `Can't translate type '${str}'`;
