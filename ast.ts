@@ -16,23 +16,25 @@ export type Type =
   | {tag: "none"}
   | {tag: "class", name: string}
 
-export const BoolT: Type  = { tag: "bool" }
-export const IntT:  Type  = { tag: "number" }
-export const NoneT: Type  = { tag: "none" }
+export const BoolT:  Type = { tag: "bool" };
+export const IntT:   Type = { tag: "number" };
+export const NoneT:  Type = { tag: "none" };
+export const ClassT: Type = { tag: "class", name: undefined };
 
-export type ClassBody = { iVars: Array<Stmt>, funcs: Array<Function> };
+export type Name = { str: string, pos: Pos }
+export type ClassBody = { iVars: Array<Stmt>, inherits: Array<Name>,  funcs: Array<Function> };
 export type Function = { pos: Pos, name: string, parameters: Array<Parameter>, ret: Type, body: Array<Stmt> };
 
 export type Stmt =
   | { tag: "pass", pos: Pos }
   | { tag: "func", content: Function }
-  | { tag: "define", pos: Pos, name: string, staticType: Type, value: Expr }
-  | { tag: "assign", pos: Pos, namePos: Pos, name: string, value: Expr }
+  | { tag: "define", pos: Pos, name: Name, staticType: Type, value: Expr }
+  | { tag: "assign", pos: Pos, name: Name, value: Expr }
   | { tag: "expr", expr: Expr }
   | { tag: "while", cond: Expr, whileBody: Array<Stmt> }
   | { tag: "if", cond: Expr, condPos: Pos, ifBody: Array<Stmt>, branches: Array<Branch>, elseBody: Array<Stmt> }
   | { tag: "return", pos: Pos, expr: Expr }
-  | { tag: "class", pos: Pos, name: string, namePos: Pos, body: ClassBody }
+  | { tag: "class", name: Name, body: ClassBody }
 
 export type Expr =
   | { tag: "num", pos: Pos, value: number }

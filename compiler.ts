@@ -59,7 +59,7 @@ export function augmentEnv(env: GlobalEnv, stmts: Array<Stmt>) : GlobalEnv {;
   stmts.forEach((s) => {
     switch(s.tag) {
       case "define":
-        newEnv.set(s.name, newOffset);
+        newEnv.set(s.name.str, newOffset);
         newOffset += 8;
         break;
       case "func":
@@ -125,7 +125,7 @@ function codeGenFunc(stmt: Stmt, env : GlobalEnv, source: string) : Array<string
 
     stmt.content.body.forEach(s => {
       if (s.tag == "define") {
-	funcLocals.push({tag : "parameter", name: s.name, type: s.staticType});
+	funcLocals.push({tag : "parameter", name: s.name.str, type: s.staticType});
       }
     });
 
@@ -137,7 +137,7 @@ function codeGenFunc(stmt: Stmt, env : GlobalEnv, source: string) : Array<string
 
     stmt.content.body.forEach(bodyStmt => {
       if (bodyStmt.tag == "define") {
-	result.push(`(local $${bodyStmt.name} i64)`);
+	result.push(`(local $${bodyStmt.name.str} i64)`);
       }
     });
     
@@ -195,18 +195,18 @@ function codeGen(stmt: Stmt, env : GlobalEnv, source: string, localParams: Array
       return codeGenRet(stmt, env, localParams, source);
     case "define":
       if (localParams.length == 0) { // Global context
-	var valStmts = [`(i32.const ${getEnv(stmt.pos, env, stmt.name, source)})`];
+	var valStmts = [`(i32.const ${getEnv(stmt.pos, env, stmt.name.str, source)})`];
 	valStmts = valStmts.concat(codeGenExpr(stmt.value, env, localParams, source));
 	return valStmts.concat([`(i64.store)`]);
       } else { // Local context
 	var valStmts = codeGenExpr(stmt.value, env, localParams, source);
-	return valStmts.concat([`(local.set $${stmt.name})`]);
+	return valStmts.concat([`(local.set $${stmt.name.str})`]);
       }
     case "assign":
-      if (getLocal(localParams, stmt.name)) {
-	return codeGenExpr(stmt.value, env, localParams, source).concat([`(local.set $${stmt.name})`])
+      if (getLocal(localParams, stmt.name.str)) {
+	return codeGenExpr(stmt.value, env, localParams, source).concat([`(local.set $${stmt.name.str})`])
       } else {
-	var rhs = [`(i32.const ${getEnv(stmt.pos, env, stmt.name, source)})`]
+	var rhs = [`(i32.const ${getEnv(stmt.pos, env, stmt.name.str, source)})`]
 	rhs = rhs.concat(codeGenExpr(stmt.value, env, localParams, source));
 	return rhs.concat([`(i64.store)`]);
       }

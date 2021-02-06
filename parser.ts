@@ -2,7 +2,7 @@
 
 import { parser } from "lezer-python";
 import { TreeCursor } from "lezer-tree";
-import { Expr, Stmt, Parameter, Pos, Branch, Type, NoneT, BoolT, IntT } from "./ast";
+import { Name, Function, Expr, Stmt, Parameter, Pos, Branch, Type, NoneT, BoolT, IntT } from "./ast";
 
 export function getSourcePos(c : TreeCursor, s : string) : Pos {
   const substring = s.substring(0, c.node.to);
@@ -193,7 +193,148 @@ export function parseType(source: string, typeStr : string, pos: Pos) : Type {
 }
 
 export function traverseClass(c: TreeCursor, s: string): Stmt {
-  return;
+  c.firstChild(); // Descend into class definition
+  c.nextSibling(); // Skip 'class' keyword
+
+  const className = s.substring(c.node.from, c.node.to);
+  const classNamePos = getSourcePos(c, s);
+  
+  var inherits: Array<Name> = [];
+  c.nextSibling();
+  
+  if (c.node.type.name == "ArgList") {
+    c.firstChild(); // Descend into the inheritance list
+
+    while (c.nextSibling()) { /* Skips the opening brace on first run */
+      inherits.push({ str: s.substr(c.node.from, c.node.to), pos: getSourcePos(c, s) });
+      c.nextSibling(); // Skip the comma or the closing brace
+    }
+
+    c.parent();
+    c.nextSibling();
+  }
+
+  c.firstChild(); // Get the first child
+  c.nextSibling(); // Skip the ':'
+  
+  var body: Array<Stmt>  = []; // Get all the statements in the body
+  do {
+    body.push(traverseStmt(c, s));
+  } while (c.nextSibling());
+
+  var iVars: Array<Stmt> = [];
+  var funcs: Array<Function> = [];
+
+  
+  body.forEach(bStmt => {
+    switch (bStmt.tag) {
+      case "define":
+	iVars.push(bStmt);
+	break;
+      case "func":
+	funcs.push(bStmt.content);
+	break;
+      default:
+	scopeError({line: 0, col: 0, len: 0}, `Can't have ${bStmt.tag} in a class defintion.`, s);
+	break;
+    }
+  });
+
+  c.parent();
+  c.parent();
+  
+  const result: Stmt = {
+    tag: "class",
+    name: { str: className, pos: classNamePos },
+    body: {
+      iVars: iVars,
+      inherits: inherits,
+      funcs: funcs
+    }
+  }
+
+  return result;  
+}
+
+export function traverseFunction(c: TreeCursor, s: string) : Stmt {
+  c.firstChild(); // Descend to the function
+  c.nextSibling(); // Skip the 'def' keyword
+
+  const funName = s.substring(c.node.from, c.node.to);
+
+  c.nextSibling(); // Skip to the parameter list
+  c.firstChild(); // Descend to the variable list
+  c.nextSibling(); // Skip the opening paren
+
+  var paramList : Array<Parameter> = [];
+  var iter = 0;
+  while (s.substring(c.node.from, c.node.to) != ")") {
+    iter+=1;
+    if (iter > 10) {
+      break;
+    }
+    var varName = s.substring(c.node.from, c.node.to);
+    c.nextSibling(); // go to the typedef
+    c.firstChild(); // descend to the typedef
+    c.nextSibling(); // Skip the colon
+
+    const paramTypeStr = s.substring(c.node.from, c.node.to);
+    const paramTypePos = getSourcePos(c, s);
+    const paramType: Type = parseType(s, paramTypeStr, paramTypePos);
+
+    c.parent();
+
+    paramList = paramList.concat({
+      tag: "parameter",
+      name: varName,
+      type: paramType,
+    });
+
+    c.nextSibling(); // go to the next token (',', ')')
+    
+    // Check if the next token is a comma
+    if (s.substring(c.node.from, c.node.to) == ",") {
+      c.nextSibling(); // Skip it
+    } 
+    
+  };
+
+  c.parent(); // Get out of the parameter list
+  
+  c.nextSibling(); // Go to the function's typedef
+
+  var retType: Type = NoneT;
+  
+  if (c.node.name != "Body") {
+    c.firstChild();
+    retType = parseType(s, s.substring(c.node.from, c.node.to), getSourcePos(c, s));
+    c.parent(); // Go back to the function
+  }
+  
+  c.nextSibling(); // Get to the function body
+  c.firstChild();
+  c.nextSibling(); // Skip the colon in the body
+
+  var bodyStmts: Array<Stmt> = [];
+  do {
+    bodyStmts.push(traverseStmt(c, s));
+  } while(c.nextSibling());
+  
+  c.parent();
+  c.parent();
+  
+  const resultVal: Stmt = {
+    tag: "func",
+    content: {
+      pos: getSourcePos(c, s),
+      name: funName,
+      parameters: paramList,
+      ret: retType,
+      body: bodyStmts
+    }
+  }
+
+  return resultVal;
 }
 
 export function traverseStmt(c : TreeCursor, s : string) : Stmt {
@@ -204,84 +345,7 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
     case "ClassDefinition":
       return traverseClass(c, s);
     case "FunctionDefinition":
-      c.firstChild(); // Descend to the function
-      c.nextSibling(); // Skip the 'def' keyword
-
-      const funName = s.substring(c.node.from, c.node.to);
-
-      c.nextSibling(); // Skip to the parameter list
-      c.firstChild(); // Descend to the variable list
-      c.nextSibling(); // Skip the opening paren
-
-      var paramList : Array<Parameter> = [];
-      var iter = 0;
-      while (s.substring(c.node.from, c.node.to) != ")") {
-	iter+=1;
-	if (iter > 10) {
-	  break;
-	}
-	var varName = s.substring(c.node.from, c.node.to);
-	c.nextSibling(); // go to the typedef
-	c.firstChild(); // descend to the typedef
-	c.nextSibling(); // Skip the colon
-
-	const paramTypeStr = s.substring(c.node.from, c.node.to);
-	const paramTypePos = getSourcePos(c, s);
-	const paramType: Type = parseType(s, paramTypeStr, paramTypePos);
-
-	c.parent();
-
-	paramList = paramList.concat({
-	  tag: "parameter",
-	  name: varName,
-	  type: paramType,
-	});
-
-	c.nextSibling(); // go to the next token (',', ')')
-	
-	// Check if the next token is a comma
-	if (s.substring(c.node.from, c.node.to) == ",") {
-	  c.nextSibling(); // Skip it
-	} 
-	
-      };
-
-      c.parent(); // Get out of the parameter list
-      
-      c.nextSibling(); // Go to the function's typedef
-
-      var retType: Type = NoneT;
-      
-      if (c.node.name != "Body") {
-	c.firstChild();
-	retType = parseType(s, s.substring(c.node.from, c.node.to), getSourcePos(c, s));
-	c.parent(); // Go back to the function
-      }
-      
-      c.nextSibling(); // Get to the function body
-      c.firstChild();
-      c.nextSibling(); // Skip the colon in the body
-
-      var bodyStmts: Array<Stmt> = [];
-      do {
-        bodyStmts.push(traverseStmt(c, s));
-      } while(c.nextSibling());
-      
-      c.parent();
-      c.parent();
-      
-      const resultVal: Stmt = {
-	tag: "func",
-	content: {
-	  pos: getSourcePos(c, s),
-	  name: funName,
-	  parameters: paramList,
-	  ret: retType,
-	  body: bodyStmts
-	}
-      }
-
-      return resultVal;
+      return traverseFunction(c, s);
     case "IfStatement":
 
       c.firstChild(); // go to if
@@ -377,9 +441,9 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
       
       c.firstChild(); // go to name
 
-      const namePos = getSourcePos(c, s);
-
       const name = s.substring(c.from, c.to);
+      const namePos = getSourcePos(c, s);
+      
       c.nextSibling(); // go to colon
 
       var staticType: Type = undefined;
@@ -405,15 +469,14 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
           tag: "define",
 	  pos: assignPos,
 	  staticType: staticType,
-          name: name,
+          name: { str: name, pos: namePos },
           value: value
 	}
       } else {
 	return {
 	  tag: "assign",
 	  pos: assignPos,
-	  namePos: namePos,
-	  name: name,
+	  name: { str: name, pos: namePos },
 	  value: value
 	}
       }
@@ -449,11 +512,10 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
     case "ReturnStatement":
       c.firstChild();
       var retExpr: Expr = undefined;
-      console.log("<54> " + c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
+
       if (c.nextSibling() != undefined) { // Skip 'return'
 	retExpr = traverseExpr(c, s);
       }
-      console.log("<54> " + c.node.type.name + ": " + s.substring(c.node.from, c.node.to));
       c.parent();
       return { tag: "return", pos: getSourcePos(c, s), expr: retExpr };
     default:

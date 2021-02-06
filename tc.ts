@@ -78,16 +78,16 @@ export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
 	typeError(stmt.pos, errMsg, source);
       }
 
-      env[stmt.name] = stmt.staticType;
+      env[stmt.name.str] = stmt.staticType;
       
       return stmt.staticType;
     case "assign":
-      if (env[stmt.name] == undefined) {
-	symLookupError(stmt.namePos, `Cannot find value '${stmt.name}' in current scope`, source);
+      if (env[stmt.name.str] == undefined) {
+	symLookupError(stmt.name.pos, `Cannot find value '${stmt.name}' in current scope`, source);
       }
 
-      const assignLhsPos: Pos = stmt.namePos;
-      const assignLhsExpr: Expr = { tag: "id", pos: assignLhsPos, name: stmt.name };
+      const assignLhsPos: Pos = stmt.name.pos;
+      const assignLhsExpr: Expr = { tag: "id", pos: assignLhsPos, name: stmt.name.str };
       const assignLhsType = tc_expr(assignLhsExpr, source, gblEnv, funEnv);
       
       const assignRhsType = tc_expr(stmt.value, source, gblEnv, funEnv);
@@ -143,7 +143,7 @@ export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
     case "func":
       stmt.content.body.forEach(s => {
 	if (s.tag == "define") {
-	  funEnv[s.name] = s.staticType;
+	  funEnv[s.name.str] = s.staticType;
 	}
       });
       

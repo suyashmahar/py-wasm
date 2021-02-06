@@ -11,6 +11,9 @@ export function tr(type: Type): string {
     case BoolT:
       return "bool";
     default:
+      if (type.tag == "class") {
+	return `<${type.name}>`;
+      }
       debugger;
       throw `Unable to translate type '${type}', called from ${tr.caller}`;
   }
