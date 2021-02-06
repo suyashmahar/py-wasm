@@ -15,7 +15,7 @@ module.exports = {
     wabt: 'wabt'
   },
   resolve: {
-    extensions: ['.ts']
+    extensions: ['.ts', '.js']
   },
   output: {
     path: path.resolve(__dirname, "build"),

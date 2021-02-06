@@ -36,6 +36,12 @@ export function tc_binExp(pos: Pos, op : string, leftType : string, rightType : 
 	typeError(pos, `Operator \`is\` used on non-None types, ${leftType} and ${rightType}`, source);
       }
       return "bool";
+    case "and":
+    case "or":
+      if (leftType != "bool" || rightType != "bool") {
+	typeError(pos, `Operator ${op} used on non-bool types, ${leftType} and ${rightType}`, source);
+      }
+      return "bool";
     default:
       throw "Unknown operator " + op;
   }

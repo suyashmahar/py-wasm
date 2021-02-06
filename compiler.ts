@@ -10,7 +10,9 @@ type LocalEnv = Map<string, boolean>;
 
 // Store all the functions separately
 export var funcs : Array<Array<string>> = [];
-export const NONE_VAL = "2305843009213693952"; // 1<<62
+export const TRUE_VAL = "4611686018427387905"; // (1<<62)+1
+export const FALSE_VAL = "4611686018427387904"; // 1<<62
+export const NONE_VAL = "2305843009213693952"; // 1<<61
 
 // Numbers are offsets into global memory
 export type GlobalEnv = {
@@ -330,6 +332,18 @@ function codeGenOp(op: string) : Array<string> {
     case "//":
       return [`(i64.div_s)`];
     case "%":
+      return [`(i64.rem_s)`]
+    case "and":
+      return [`(i64.const ${TRUE_VAL})`,
+	      `(i64.eq)`,
+	      `(i64.extend_i32_s)`,
+	      `(i64.sub)`,
+	      `(i64.const ${FALSE_VAL})`,
+	      `(i64.eq)`,
+	      `(i64.extend_i32_s)`,
+	      `(i64.const ${FALSE_VAL})`,
+	      `(i64.add)`];
+    case "or":
       return [`(i64.rem_s)`]
     case "==":
       return [`(i64.eq)`,
