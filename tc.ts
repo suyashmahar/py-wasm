@@ -1,9 +1,9 @@
 // -*- mode: typescript; typescript-indent-level: 2; -*-
 
 import { typeError, symLookupError, argError, scopeError, parseError } from './parser';
-import { GlobalEnv } from "./compiler";
+import { GlobalEnv } from "./env";
 import { Type, Value, Expr, Stmt, Parameter, Pos, Branch, BoolT, IntT, NoneT } from "./ast";
-import { tr } from "./common"
+import { tr, eqT, neqT } from "./common"
 
 export type EnvType = Record<string, Type>;
 export var env : EnvType = {};
@@ -73,7 +73,7 @@ export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
       const rhsType = tc_expr(stmt.value, source, gblEnv, funEnv);
       const lhsType = stmt.staticType;
 
-      if (rhsType != lhsType) {
+      if (rhsType != lhsType && rhsType != NoneT) {
 	const errMsg = `${tr(rhsType)} value assigned to '${stmt.name}' which is of type ${tr(lhsType)}`;
 	typeError(stmt.pos, errMsg, source);
       }
@@ -91,15 +91,15 @@ export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
       const assignLhsType = tc_expr(assignLhsExpr, source, gblEnv, funEnv);
       
       const assignRhsType = tc_expr(stmt.value, source, gblEnv, funEnv);
-      if (assignLhsType != assignRhsType) {
-	const errMsg = `Value of type ${tr(assignRhsType)} to '${stmt.name}' which is of type ${tr(assignLhsType)}`;
+      if (neqT(assignLhsType, assignRhsType)) {
+	const errMsg = `Value of type ${tr(assignRhsType)} to '${stmt.name.str}' which is of type ${tr(assignLhsType)}`;
 	typeError(stmt.pos, errMsg, source);
       }
       return NoneT;
     case "while":
       const whileCondType = tc_expr(stmt.cond, source, gblEnv, funEnv);
 
-      if (whileCondType != BoolT) {
+      if (neqT(whileCondType, BoolT)) {
 	typeError(stmt.cond.pos, `While condition expected a bool, found ${tr(whileCondType)}.`, source);
       }
 
@@ -180,33 +180,43 @@ export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: 
 	return env[expr.name];
       }
     case "funcCall":
-      if (gblEnv.funcs.get(expr.name) == undefined) {
+      const callName = expr.name;
+      var retType: Type = undefined;
+      
+      /* Call to global function */
+      if (gblEnv.funcs.get(callName) != undefined) {
+	const argsExpected = gblEnv.funcs.get(expr.name).members.length;
+	const argsProvided = expr.args.length;
+
+	if (argsExpected != argsProvided) {
+	  argError(expr.prmPos, `${expr.name}() needs ${argsExpected} arguments, ${argsProvided} provided`, source);
+	}
+
+	/* Only check if this function is not print() */
+	if (expr.name != "print") {
+	  var argIter = 0;
+	  expr.args.forEach(arg => {
+	    const argTypeProvided = tc_expr(arg, source, gblEnv, funEnv);
+	    const argTypeExpected = gblEnv.funcs.get(expr.name).members[argIter];
+
+	    if (argTypeProvided != argTypeExpected) {
+	      typeError(expr.prmsPosArr[argIter], `Argument ${argIter} is of type ${tr(argTypeExpected)}, ${tr(argTypeProvided)} provided`, source);
+	    }
+	    
+	    argIter += 1;
+	  });
+	}
+	retType = gblEnv.funcs.get(callName).retType;
+      } else if (gblEnv.classes.get(callName) != undefined) { /* Constructor */
+	const argsProvided = expr.args.length;
+	if (argsProvided != 0) {
+	  argError(expr.prmPos, `Constructor for classes take exactly 0 arguments, ${argsProvided} provided`, source);
+	}
+	retType = { tag: "class", name: callName }; // Call name is same as the class name
+      } else {
 	scopeError(expr.pos, `Function not in scope: ${expr.name}`, source);
       }
-
-      const argsExpected = gblEnv.funcs.get(expr.name)[0].length;
-      const argsProvided = expr.args.length;
-
-      if (argsExpected != argsProvided) {
-	argError(expr.prmPos, `${expr.name}() needs ${argsExpected} arguments, ${argsProvided} provided`, source);
-      }
-
-      /* Only check if this function is not print() */
-      if (expr.name != "print") {
-	var argIter = 0;
-	expr.args.forEach(arg => {
-	  const argTypeProvided = tc_expr(arg, source, gblEnv, funEnv);
-	  const argTypeExpected = gblEnv.funcs.get(expr.name)[0][argIter];
-
-	  if (argTypeProvided != argTypeExpected) {
-	    typeError(expr.prmsPosArr[argIter], `Argument ${argIter} is of type ${tr(argTypeExpected)}, ${tr(argTypeProvided)} provided`, source);
-	  }
-	  
-	  argIter += 1;
-	});
-      }
-	
-      return IntT;
+      return retType;
       
     case "unaryExp":
       tc_uExp(expr.pos, expr.name, tc_expr(expr.arg, source, gblEnv, funEnv), source);

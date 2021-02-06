@@ -1,7 +1,7 @@
 // -*- mode: typescript; typescript-indent-level: 2; -*-
 
 import { run } from "./runner";
-import { emptyEnv, GlobalEnv } from "./compiler";
+import { GlobalEnv } from "./env";
 import { BoolT, IntT, NoneT } from "./ast";
 
 interface REPL {
@@ -16,13 +16,16 @@ export class BasicREPL {
     this.importObject = importObject;
     if(!importObject.js) {
       const memory = new WebAssembly.Memory({initial:10, maximum:20});
-      this.importObject.js = { memory: memory };
+      const table = new WebAssembly.Table({element: "anyfunc", initial: 10});
+      this.importObject.js = { memory: memory, table: table };
     }
     this.currentEnv = {
       globals: new Map(),
-      funcs: new Map([['print', [[NoneT], IntT]],
+      classes: new Map(),
+      funcs: new Map([['print', { members: [NoneT], retType: IntT}],
 		     ]),
-      offset: 0
+      offset: 0,
+      classOffset: 0
     };
   }
   async run(source : string) : Promise<any> {

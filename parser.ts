@@ -3,6 +3,7 @@
 import { parser } from "lezer-python";
 import { TreeCursor } from "lezer-tree";
 import { Name, Function, Expr, Stmt, Parameter, Pos, Branch, Type, NoneT, BoolT, IntT } from "./ast";
+import { tr } from "./common";
 
 export function getSourcePos(c : TreeCursor, s : string) : Pos {
   const substring = s.substring(0, c.node.to);
@@ -188,7 +189,7 @@ export function parseType(source: string, typeStr : string, pos: Pos) : Type {
     case "None":
       return NoneT;
     default:
-      typeError(pos, `Unkown type ${typeStr}.`, source);
+      return { tag: "class", name: typeStr };
   }
 }
 
@@ -453,9 +454,6 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
 
 	staticType = parseType(s, staticTypeStr, staticTypePos);
 	
-	if (staticType != BoolT && staticType != IntT) {
-	  typeError(staticTypePos, `Unknown type ${staticType}.`, s);
-	}
       }
       
       c.nextSibling(); // go to equals

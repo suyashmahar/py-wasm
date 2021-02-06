@@ -8,6 +8,7 @@
 import wabt from 'wabt';
 import * as compiler from './compiler';
 import {parse} from './parser';
+import {GlobalEnv} from './env';
 
 // NOTE(joe): This is a hack to get the CLI Repl to run. WABT registers a global
 // uncaught exn handler, and this is not allowed when running the REPL
@@ -23,7 +24,7 @@ if(typeof process !== "undefined") {
   };
 }
 
-export async function run(source : string, config: any) : Promise<[any, compiler.GlobalEnv]> {
+export async function run(source : string, config: any) : Promise<[any, GlobalEnv]> {
   const wabtInterface = await wabt();
   const parsed = parse(source);
   var returnType = "";
@@ -38,16 +39,14 @@ export async function run(source : string, config: any) : Promise<[any, compiler
 
   if(!importObject.js) {
     const memory = new WebAssembly.Memory({initial:10, maximum:100});
-    importObject.js = { memory: memory };
+    const table = new WebAssembly.Table({element: "anyfunc", initial:10});
+    importObject.js = { memory: memory, table: table };
   }
   
   const wasmSource = `(module
     (func $print (import "imports" "print") (param i64) (result i64))
-    (func $abs (import "imports" "abs") (param i32) (result i32))
-    (func $max (import "imports" "max") (param i32) (param i32) (result i32))
-    (func $min (import "imports" "min") (param i32) (param i32) (result i32))
-    (func $pow (import "imports" "pow") (param i32) (param i32) (result i32))
     (import "js" "memory" (memory 1))
+    (import "js" "table" (table 1 funcref))
     (func (export "exported_func") ${returnType}
       ${compiled.wasmSource}
       ${returnExpr}

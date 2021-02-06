@@ -1,8 +1,8 @@
 // -*- mode: typescript; typescript-indent-level: 2; -*-
 
 import {BasicREPL} from './repl';
-import {emptyEnv, GlobalEnv} from './compiler';
-import {run} from './runner';
+import {emptyEnv} from './compiler';
+import {GlobalEnv} from './env';
 
 import * as ace from 'brace';
 import 'brace/mode/python';
@@ -28,6 +28,18 @@ function webStart() {
         iter = iter + 1
 
 print_pattern(10)
+`, -1);
+    });
+
+    document.getElementById("ex-class").addEventListener("click", function() {
+      editor.setValue(`class Rat(object):
+    n : int = 0
+    d : int = 0
+    def __init__(self : Rat):
+        pass
+        
+r1 : Rat = None
+r1 = Rat()
 `, -1);
     });
     
@@ -148,18 +160,6 @@ pass
           document.getElementById("output").appendChild(elt);
           elt.innerText = processedArg;
           return arg;
-        },
-        abs: (arg : any) => {
-          return Math.abs(arg);
-        },
-        max: (arg1 : any, arg2 : any) => {
-	  return arg1 > arg2 ? arg1 : arg2;
-        },
-        min: (arg1 : any, arg2: any) => {
-	  return arg2 > arg1 ? arg1 : arg2;
-        },
-        pow: (arg1 : any, arg2 : any) => {
-          return Math.pow(arg1, arg2);
         },
 	imported_func: (arg : any) => {
           console.log("Logging from WASM: ", arg);
