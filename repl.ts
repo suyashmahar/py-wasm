@@ -1,7 +1,8 @@
 // -*- mode: typescript; typescript-indent-level: 2; -*-
 
-import {run} from "./runner";
-import {emptyEnv, GlobalEnv} from "./compiler";
+import { run } from "./runner";
+import { emptyEnv, GlobalEnv } from "./compiler";
+import { BoolT, IntT, NoneT } from "./ast";
 
 interface REPL {
   run(source : string) : Promise<any>;
@@ -19,7 +20,7 @@ export class BasicREPL {
     }
     this.currentEnv = {
       globals: new Map(),
-      funcs: new Map([['print', [["any"], 'int']],
+      funcs: new Map([['print', [[NoneT], IntT]],
 		     ]),
       offset: 0
     };

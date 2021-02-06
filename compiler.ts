@@ -1,6 +1,6 @@
 // -*- mode: typescript; typescript-indent-level: 2; -*-
 
-import { Stmt, Expr, Parameter, Pos } from "./ast";
+import { Stmt, Expr, Parameter, Pos, Type, NoneT, BoolT, IntT } from "./ast";
 import { parse, typeError, symLookupError, argError, scopeError } from "./parser";
 import { typecheck }  from "./tc";
 
@@ -17,7 +17,7 @@ export const NONE_VAL = "2305843009213693952"; // 1<<61
 // Numbers are offsets into global memory
 export type GlobalEnv = {
   globals: Map<string, number>;
-  funcs: Map<string, [Array<string>, string]>; // Stores the argument
+  funcs: Map<string, [Array<Type>, Type]>; // Stores the argument
 					       // types and return
 					       // type for a functions
   offset: number;
@@ -63,7 +63,7 @@ export function augmentEnv(env: GlobalEnv, stmts: Array<Stmt>) : GlobalEnv {;
         newOffset += 8;
         break;
       case "func":
-	const paramTypes: Array<string> = [];
+	const paramTypes: Array<Type> = [];
 	s.parameters.forEach(param => {
 	  paramTypes.push(param.type);
 	});
@@ -150,7 +150,7 @@ function codeGenFunc(stmt: Stmt, env : GlobalEnv, source: string) : Array<string
 
     }
 
-    if (stmt.ret != "None") {
+    if (stmt.ret != NoneT) {
       // result.push(`(local.get $$last)`);
     } else { // Return None
       result.push(`(i64.const ${NONE_VAL})`); // 1UL << 62

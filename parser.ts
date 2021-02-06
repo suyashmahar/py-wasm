@@ -2,7 +2,7 @@
 
 import { parser } from "lezer-python";
 import { TreeCursor } from "lezer-tree";
-import { Expr, Stmt, Parameter, Pos, Branch } from "./ast";
+import { Expr, Stmt, Parameter, Pos, Branch, Type, NoneT, BoolT, IntT } from "./ast";
 
 export function getSourcePos(c : TreeCursor, s : string) : Pos {
   const substring = s.substring(0, c.node.to);
@@ -181,6 +181,19 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr {
   }
 }
 
+export function parseType(source: string, typeStr : string, pos: Pos) : Type {
+  switch (typeStr) {
+    case "bool":
+      return BoolT;
+    case "int":
+      return IntT;
+    case "None":
+      return NoneT;
+    default:
+      typeError(pos, `Unkown type ${typeStr}.`, source);
+  }
+}
+
 export function traverseStmt(c : TreeCursor, s : string) : Stmt {
   console.log(c.node);
   switch(c.node.type.name) {
@@ -207,7 +220,11 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
 	c.nextSibling(); // go to the typedef
 	c.firstChild(); // descend to the typedef
 	c.nextSibling(); // Skip the colon
-	var paramType = s.substring(c.node.from, c.node.to)
+
+	const paramTypeStr = s.substring(c.node.from, c.node.to);
+	const paramTypePos = getSourcePos(c, s);
+	const paramType: Type = parseType(s, paramTypeStr, paramTypePos);
+
 	c.parent();
 
 	paramList = paramList.concat({
@@ -229,11 +246,11 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
       
       c.nextSibling(); // Go to the function's typedef
 
-      var retType = "None";
+      var retType: Type = NoneT;
       
       if (c.node.name != "Body") {
 	c.firstChild();
-	retType = s.substring(c.node.from, c.node.to);
+	retType = parseType(s, s.substring(c.node.from, c.node.to), getSourcePos(c, s));
 	c.parent(); // Go back to the function
       }
       
@@ -359,12 +376,14 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
       const name = s.substring(c.from, c.to);
       c.nextSibling(); // go to colon
 
-      var staticType:string = undefined;
+      var staticType: Type = undefined;
       if (s.substring(c.from, c.from+1) == ':') {
-	staticType = s.substring(c.from, c.to).replace(":", "").trim();
+	const staticTypeStr = s.substring(c.from, c.to).replace(":", "").trim();
 	const staticTypePos = getSourcePos(c, s);
+
+	staticType = parseType(s, staticTypeStr, staticTypePos);
 	
-	if (staticType != "bool" && staticType != "int") {
+	if (staticType != BoolT && staticType != IntT) {
 	  typeError(staticTypePos, `Unknown type ${staticType}.`, s);
 	}
       }

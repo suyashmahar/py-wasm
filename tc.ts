@@ -2,13 +2,14 @@
 
 import { typeError, symLookupError, argError, scopeError, parseError } from './parser';
 import { GlobalEnv } from "./compiler";
-import { Expr, Stmt, Parameter, Pos, Branch } from "./ast";
+import { Type, Value, Expr, Stmt, Parameter, Pos, Branch, BoolT, IntT, NoneT } from "./ast";
+import { tr } from "./common"
 
-export type EnvType = Record<string, string>;
+export type EnvType = Record<string, Type>;
 export var env : EnvType = {};
 
 
-export function tc_binExp(pos: Pos, op : string, leftType : string, rightType : String, source: string) : string {
+export function tc_binExp(pos: Pos, op : string, leftType : Type, rightType : Type, source: string) : Type {
   switch (op) {
     case "-":
     case "+":
@@ -16,11 +17,11 @@ export function tc_binExp(pos: Pos, op : string, leftType : string, rightType : 
     case "%":
     case "//":
       console.log("arguments are: " + leftType + " and " + rightType);
-      if (leftType != "int" || rightType != "int") {
-	const errMsg = `Operator ${op} expects both args to be int, got ${leftType} and ${rightType}`;
+      if (leftType != IntT || rightType != IntT) {
+	const errMsg = `Operator ${op} expects both args to be int, got ${tr(leftType)} and ${tr(rightType)}`;
 	typeError(pos, errMsg, source);
       }
-      return "int";
+      return IntT;
     case ">=":
     case "<=":
     case ">":
@@ -28,52 +29,52 @@ export function tc_binExp(pos: Pos, op : string, leftType : string, rightType : 
     case "==":
     case "!=":
       if (leftType != rightType) {
-	typeError(pos, `Operator ${op} on types that are neither both int nor bool (${leftType} and ${rightType})`, source);
+	typeError(pos, `Operator ${op} on types that are neither both int nor bool (${tr(leftType)} and ${tr(rightType)})`, source);
       }
-      return "bool";
+      return BoolT;
     case "is":
-      if (leftType != "none" || rightType != "none") {
-	typeError(pos, `Operator \`is\` used on non-None types, ${leftType} and ${rightType}`, source);
+      if (leftType != NoneT || rightType != NoneT) {
+	typeError(pos, `Operator \`is\` used on non-None types, ${tr(leftType)} and ${tr(rightType)}`, source);
       }
-      return "bool";
+      return BoolT;
     case "and":
     case "or":
-      if (leftType != "bool" || rightType != "bool") {
-	typeError(pos, `Operator ${op} used on non-bool types, ${leftType} and ${rightType}`, source);
+      if (leftType != BoolT || rightType != BoolT) {
+	typeError(pos, `Operator ${op} used on non-bool types, ${tr(leftType)} and ${tr(rightType)}`, source);
       }
-      return "bool";
+      return BoolT;
     default:
       throw "Unknown operator " + op;
   }
 }
 
-export function tc_uExp(pos: Pos, op: string, exprType: string, source: string) {
+export function tc_uExp(pos: Pos, op: string, exprType: Type, source: string) {
   switch (op) {
     case "-":
-      if (exprType != "int") {
-	typeError(pos, `Cannot use unary operator '-' with ${exprType}`, source);
+      if (exprType != IntT) {
+	typeError(pos, `Cannot use unary operator '-' with ${tr(exprType)}`, source);
       }
       break;
     case "not":
-      if (exprType != "bool") {
-	typeError(pos, `Cannot use unary operator 'not' with ${exprType}`, source);
+      if (exprType != BoolT) {
+	typeError(pos, `Cannot use unary operator 'not' with ${tr(exprType)}`, source);
       }
       break;
   }
 }
 
-export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvType>{}) : String {
+export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvType>{}) : Type {
   switch (stmt.tag) {
     case "expr":
       return tc_expr(stmt.expr, source, gblEnv, funEnv);
     case "pass":
-      return "none";
+      return NoneT;
     case "define":
       const rhsType = tc_expr(stmt.value, source, gblEnv, funEnv);
       const lhsType = stmt.staticType;
 
       if (rhsType != lhsType) {
-	const errMsg = `${rhsType} value assigned to '${stmt.name}' which is of type ${lhsType}`;
+	const errMsg = `${tr(rhsType)} value assigned to '${stmt.name}' which is of type ${tr(lhsType)}`;
 	typeError(stmt.pos, errMsg, source);
       }
 
@@ -84,19 +85,22 @@ export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
       if (env[stmt.name] == undefined) {
 	symLookupError(stmt.namePos, `Cannot find value '${stmt.name}' in current scope`, source);
       }
+
+      const assignLhsPos: Pos = stmt.namePos;
+      const assignLhsExpr: Expr = { tag: "id", pos: assignLhsPos, name: stmt.name };
+      const assignLhsType = tc_expr(assignLhsExpr, source, gblEnv, funEnv);
       
-      const assignLhsType = env[stmt.name]
       const assignRhsType = tc_expr(stmt.value, source, gblEnv, funEnv);
       if (assignLhsType != assignRhsType) {
-	const errMsg = `Value of type ${assignRhsType} to '${stmt.name}' which is of type ${assignLhsType}`;
+	const errMsg = `Value of type ${tr(assignRhsType)} to '${stmt.name}' which is of type ${tr(assignLhsType)}`;
 	typeError(stmt.pos, errMsg, source);
       }
-      return "None";
+      return NoneT;
     case "while":
       const whileCondType = tc_expr(stmt.cond, source, gblEnv, funEnv);
 
-      if (whileCondType != "bool") {
-	typeError(stmt.cond.pos, `While condition expected a bool, found ${whileCondType}.`, source);
+      if (whileCondType != BoolT) {
+	typeError(stmt.cond.pos, `While condition expected a bool, found ${tr(whileCondType)}.`, source);
       }
 
       // Check the body
@@ -104,15 +108,15 @@ export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
 	tc_stmt(s, source, gblEnv, funEnv);
       });
       
-      return "None";
+      return NoneT;
     case "if":
       const condType = tc_expr(stmt.cond, source, gblEnv, funEnv);
 
       if (stmt.branches != []) {
 	stmt.branches.forEach(branch => {
 	  const condType = tc_expr(branch.cond, source, gblEnv, funEnv);
-	  if (condType != "bool") {
-	    typeError(stmt.condPos, `If condition expected bool but got ${condType}`, source);
+	  if (condType != BoolT) {
+	    typeError(stmt.condPos, `If condition expected bool but got ${tr(condType)}`, source);
 	  }
 	  
 	  branch.body.forEach(s => { tc_stmt(s, source, gblEnv, funEnv); });
@@ -127,11 +131,11 @@ export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
 	stmt.ifBody.forEach(s => { tc_stmt(s, source, gblEnv, funEnv); });
       }
 
-      if (condType != "bool") {
-	typeError(stmt.condPos, `If condition expected bool but got ${condType}`, source);
+      if (condType != BoolT) {
+	typeError(stmt.condPos, `If condition expected bool but got ${tr(condType)}`, source);
       }
 
-      return "None";
+      return NoneT;
     case "return":
       const retType = tc_expr(stmt.expr, source, gblEnv, funEnv);
 
@@ -150,7 +154,7 @@ export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
 	if (s.tag == "return") {
 	  const retType = tc_expr(s.expr, source, gblEnv, funEnv);
 	  if (retType != stmt.ret) {
-	    const throwMsg = `Return's type ${retType} and function's return type ${stmt.ret} don't match`;
+	    const throwMsg = `Return's type ${tr(retType)} and function's return type ${tr(stmt.ret)} don't match`;
 	    typeError(s.pos, throwMsg, source);
 	  }
 	}
@@ -158,16 +162,16 @@ export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
   }
 }
 
-export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvType>{}):string {
+export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvType>{}): Type {
   switch(expr.tag) {
     case "bool":
-      return "bool";
+      return BoolT;
       
     case "num":
-      return "int";
+      return IntT;
       
     case "none":
-      return "none";
+      return NoneT;
       
     case "id":
       if (funEnv[expr.name] != undefined) {
@@ -175,7 +179,6 @@ export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: 
       } else {
 	return env[expr.name];
       }
-      
     case "funcCall":
       if (gblEnv.funcs.get(expr.name) == undefined) {
 	scopeError(expr.pos, `Function not in scope: ${expr.name}`, source);
@@ -188,18 +191,22 @@ export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: 
 	argError(expr.prmPos, `${expr.name}() needs ${argsExpected} arguments, ${argsProvided} provided`, source);
       }
 
-      var argIter = 0;
-      expr.args.forEach(arg => {
-	const argTypeProvided = tc_expr(arg, source, gblEnv, funEnv);
-	const argTypeExpected = gblEnv.funcs.get(expr.name)[0][argIter];
+      /* Only check if this function is not print() */
+      if (expr.name != "print") {
+	var argIter = 0;
+	expr.args.forEach(arg => {
+	  const argTypeProvided = tc_expr(arg, source, gblEnv, funEnv);
+	  const argTypeExpected = gblEnv.funcs.get(expr.name)[0][argIter];
 
-	if (argTypeProvided != argTypeExpected && argTypeExpected != "any") {
-	  typeError(expr.prmsPosArr[argIter], `Argument ${argIter} is of type ${argTypeExpected}, ${argTypeProvided} provided`, source);
-	}
+	  if (argTypeProvided != argTypeExpected) {
+	    typeError(expr.prmsPosArr[argIter], `Argument ${argIter} is of type ${tr(argTypeExpected)}, ${tr(argTypeProvided)} provided`, source);
+	  }
+	  
+	  argIter += 1;
+	});
+      }
 	
-	argIter += 1;
-      });
-      return "int";
+      return IntT;
       
     case "unaryExp":
       tc_uExp(expr.pos, expr.name, tc_expr(expr.arg, source, gblEnv, funEnv), source);
