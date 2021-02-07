@@ -142,7 +142,6 @@ export function compile(source: string, env: GlobalEnv) : CompileResult {
     funcsStr = funcsStr.concat(fun.join("\n"))
   });
   
-  console.log("Generated: ", commands.join("\n"));
   return {
     wasmSource: commands.join("\n"),
     newEnv: withDefines,
@@ -152,7 +151,7 @@ export function compile(source: string, env: GlobalEnv) : CompileResult {
 
 function codeGenFunc(stmt: Stmt, env : GlobalEnv, source: string, prefix: string = "", resultTStr: string = "(result i64)", classT: Type) : Array<string> {
   if (stmt.tag == "func") {
-    var result: Array<string> = [];
+    var result: Array<string> = [``,``];
 
     var header = `(func ${prefix}$${stmt.content.name}`;
     var funcLocals:Array<Parameter> = stmt.content.parameters;
@@ -288,12 +287,11 @@ function codeGenMemberExpr(expr: Expr, env: GlobalEnv, source: string, localPara
 }
 
 function codeGen(stmt: Stmt, env : GlobalEnv, source: string, localParams: Array<Parameter> = [], classT: Type = undefined) : Array<string> {
-  console.log("tag: " + stmt.tag);
   switch(stmt.tag) {
     case "class":
       return codeGenClass(stmt, env, source, classT);
     case "pass":
-      return ["(nop)"];
+      return ["(nop)", ``];
     case "func":
       return codeGenFunc(stmt, env, source, "", "(result i64)", classT=classT);
     case "return":
@@ -423,7 +421,7 @@ function codeGenFuncCall(expr: Expr, env: GlobalEnv, localParams: Array<Paramete
 
     var result = [""];
     if (expr.name.tag == "id") {
-      result = argStmts.concat([`(call $${expr.name.name})`]);
+      result = argStmts.concat([`(call $${expr.name.name})`, ``]);
     } else {
       err.internalError();
     }
@@ -470,7 +468,8 @@ export function codeGenCtorCall(expr: Expr, env: GlobalEnv, localParams: Array<P
     /* Generate the return value */
     result = result.concat([`(i64.load (i32.const 0)) ;; Generating return value`,
 			    `(i64.const ${memId*8})`,
-			    `(i64.sub) ;; Ctor ends`]);
+			    `(i64.sub) ;; Ctor ends`,
+			    ``]);
     
     return result;
   } else {

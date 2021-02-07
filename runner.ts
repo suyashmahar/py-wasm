@@ -9,6 +9,7 @@ import wabt from 'wabt';
 import * as compiler from './compiler';
 import {parse} from './parser';
 import {GlobalEnv} from './env';
+import { lintWasmSource } from './linter';
 
 // NOTE(joe): This is a hack to get the CLI Repl to run. WABT registers a global
 // uncaught exn handler, and this is not allowed when running the REPL
@@ -54,7 +55,7 @@ export async function run(source : string, config: any) : Promise<[any, GlobalEn
     ${compiled.funcs}
   )`;
 
-  console.log(wasmSource);
+  console.log(lintWasmSource(wasmSource));
   const myModule = wabtInterface.parseWat("test.wat", wasmSource);
   var asBinary = myModule.toBinary({});
   var wasmModule = await WebAssembly.instantiate(asBinary.buffer, importObject);
