@@ -38,10 +38,13 @@ print_pattern(10)
     def __init__(self : Rat):
         self.n = 200
         
-        pass
+    def new(self: Rat, a:int, b:int):
+        self.n = a
+        self.d = b
         
 r1 : Rat = None
 r1 = Rat()
+r1.new(1, 2)
 print(r1.n)
 `, -1);2
     });

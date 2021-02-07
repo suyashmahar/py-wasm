@@ -1,6 +1,6 @@
 // -*- mode: typescript; typescript-indent-level: 2; -*-
 
-import { typeError, symLookupError, argError, scopeError, parseError } from './error';
+import { internalError, typeError, symLookupError, argError, scopeError, parseError } from './error';
 import { GlobalEnv } from "./env";
 import { Type, Value, Expr, Stmt, Parameter, Pos, Branch, BoolT, IntT, NoneT } from "./ast";
 import { tr, eqT, neqT } from "./common"
@@ -190,42 +190,69 @@ export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: 
       }
 
     case "funcCall":
-      const callName = expr.name;
+      const callExpr = expr.name;
       var retType: Type = undefined;
       
-      /* Call to global function */
-      if (gblEnv.funcs.get(callName) != undefined) {
-	const argsExpected = gblEnv.funcs.get(expr.name).members.length;
-	const argsProvided = expr.args.length;
+      if (callExpr.tag == "memExp") {
+	const firstPart = tc_expr(callExpr.expr, source, gblEnv, funEnv, classEnv);
+	const memberFunName = callExpr.member.str;
 
-	if (argsExpected != argsProvided) {
-	  argError(expr.prmPos, `${expr.name}() needs ${argsExpected} arguments, ${argsProvided} provided`, source);
-	}
-
-	/* Only check if this function is not print() */
-	if (expr.name != "print") {
-	  var argIter = 0;
-	  expr.args.forEach(arg => {
-	    const argTypeProvided = tc_expr(arg, source, gblEnv, funEnv);
-	    const argTypeExpected = gblEnv.funcs.get(expr.name).members[argIter];
-
-	    if (argTypeProvided != argTypeExpected) {
-	      typeError(expr.prmsPosArr[argIter], `Argument ${argIter} is of type ${tr(argTypeExpected)}, ${tr(argTypeProvided)} provided`, source);
+	if (firstPart.tag == "class") {
+	  const classRef = gblEnv.classes.get(firstPart.name);
+	  if (classRef == undefined) {
+	    internalError();
+	  } else {
+	    const memFunRef = classRef.memberFuncs.get(memberFunName);
+	    console.log("Searching in class REf:");
+	    console.log(classRef);
+	    if (memFunRef == undefined) {
+	      scopeError(callExpr.member.pos, `Function ${memberFunName}() is not a member of class ${firstPart.name}.`, source);
+	    } else {
+	      retType = memFunRef.retType;
 	    }
-	    
-	    argIter += 1;
-	  });
+	  }
+	} else {
+	  typeError(callExpr.pos, `Cannot use dot access using function with expression of type ${callExpr.tag}`, source);
 	}
-	retType = gblEnv.funcs.get(callName).retType;
-      } else if (gblEnv.classes.get(callName) != undefined) { /* Constructor */
-	const argsProvided = expr.args.length;
-	if (argsProvided != 0) {
-	  argError(expr.prmPos, `Constructor for classes take exactly 0 arguments, ${argsProvided} provided`, source);
+      } else if (callExpr.tag == "id") {
+	const callName = callExpr.name;
+	
+	/* Call to global function */
+	if (gblEnv.funcs.get(callName) != undefined) {
+	  const argsExpected = gblEnv.funcs.get(callName).members.length;
+	  const argsProvided = expr.args.length;
+
+	  if (argsExpected != argsProvided) {
+	    argError(expr.prmPos, `${expr.name}() needs ${argsExpected} arguments, ${argsProvided} provided`, source);
+	  }
+
+	  /* Only check if this function is not print() */
+	  if (callName != "print") {
+	    var argIter = 0;
+	    expr.args.forEach(arg => {
+	      const argTypeProvided = tc_expr(arg, source, gblEnv, funEnv);
+	      const argTypeExpected = gblEnv.funcs.get(callName).members[argIter];
+
+	      if (argTypeProvided != argTypeExpected) {
+		typeError(expr.prmsPosArr[argIter], `Argument ${argIter} is of type ${tr(argTypeExpected)}, ${tr(argTypeProvided)} provided`, source);
+	      }
+	      
+	      argIter += 1;
+	    });
+	  }
+	  retType = gblEnv.funcs.get(callName).retType;
+	} else if (gblEnv.classes.get(callName) != undefined) { /* Constructor */
+	  const argsProvided = expr.args.length;
+	  if (argsProvided != 0) {
+	    argError(expr.prmPos, `Constructor for classes take exactly 0 arguments, ${argsProvided} provided`, source);
+	  }
+	  retType = { tag: "class", name: callName }; // Call name is same as the class name
+	} else {
+	  scopeError(expr.pos, `Function not in scope: ${expr.name}`, source);
 	}
-	retType = { tag: "class", name: callName }; // Call name is same as the class name
-      } else {
-	scopeError(expr.pos, `Function not in scope: ${expr.name}`, source);
+	
       }
+      
       return retType;
       
     case "unaryExp":

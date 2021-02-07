@@ -45,4 +45,4 @@ export type Expr =
   | { tag: "memExp", pos: Pos, expr: Expr, member: Name }
   | { tag: "binExp", pos: Pos, name: string, arg: [Expr, Expr] }
   | { tag: "unaryExp", pos: Pos, name: string, arg: Expr }
-  | { tag: "funcCall", pos: Pos, prmPos: Pos, prmsPosArr: Array<Pos>, name: string, args: Array<Expr> }
+  | { tag: "funcCall", pos: Pos, prmPos: Pos, prmsPosArr: Array<Pos>, name: Expr, args: Array<Expr> }

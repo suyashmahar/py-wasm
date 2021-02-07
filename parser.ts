@@ -87,7 +87,7 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr {
       const cExpPos = getSourcePos(c, s);
       
       c.firstChild();
-      const callName = s.substring(c.from, c.to);
+      const callName = traverseExpr(c, s);
       c.nextSibling(); // go to arglist
 
       const prmPos = getSourcePos(c, s);
@@ -248,6 +248,9 @@ export function traverseClass(c: TreeCursor, s: string): Stmt {
       funcs: funcs
     }
   }
+
+  console.log("Class parsed");
+  console.log(result);
 
   return result;  
 }

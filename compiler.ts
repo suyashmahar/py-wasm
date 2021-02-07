@@ -78,6 +78,7 @@ export function augmentEnv(env: GlobalEnv, stmts: Array<Stmt>) : GlobalEnv {
 	    funName = `${s.name.str}$ctor`;
 	    
 	  } else {
+	    fEnv = {name: f.name, members: params, retType: f.ret};
 	    memberFuncs.set(f.name, fEnv);
 
 	    funName = `${s.name.str}$f.name`;
@@ -228,7 +229,10 @@ function codeGenClass(stmt: Stmt, env : GlobalEnv, source: string, classT: Type 
 	tag: "func",
 	content: fun
       };
-      codeGenFunc(funStmt, env, source, `$${stmt.name.str}`, "", classT={tag: "class", name: stmt.name.str});
+      const resultType = fun.name == "__init__" ? "" : "(result i64)";
+      
+      codeGenFunc(funStmt, env, source, `$${stmt.name.str}`,
+		  resultType, classT={tag: "class", name: stmt.name.str});
     });
   } else {
     err.internalError();
@@ -416,8 +420,13 @@ function codeGenFuncCall(expr: Expr, env: GlobalEnv, localParams: Array<Paramete
     expr.args.forEach(arg => {
       argStmts = argStmts.concat(codeGenExpr(arg, env, localParams, source, classT));
     });
-    
-    const result = argStmts.concat([`(call $${expr.name})`]);
+
+    var result = [""];
+    if (expr.name.tag == "id") {
+      result = argStmts.concat([`(call $${expr.name.name})`]);
+    } else {
+      err.internalError();
+    }
 
     return result;
   } else {
@@ -426,11 +435,11 @@ function codeGenFuncCall(expr: Expr, env: GlobalEnv, localParams: Array<Paramete
 }
 
 export function codeGenCtorCall(expr: Expr, env: GlobalEnv, localParams: Array<Parameter>, source: string, classT: Type = undefined): Array<string> {
-  if (expr.tag == "funcCall") {
+  if (expr.tag == "funcCall" && expr.name.tag == "id") {
     /* Allocate an object on the heap */   
     var result: Array<string> = []  // Load the dynamic heap head offset
 
-    const classMemVars: Map<string, [Expr, Type]> = getClassMemVars(expr.name, env);
+    const classMemVars: Map<string, [Expr, Type]> = getClassMemVars(expr.name.name, env);
     var memId = 0;
     classMemVars.forEach((val, key) => {
       result = result.concat([`(i64.load (i32.const 0)) ;; Ctor, member ${key} init`,
@@ -452,11 +461,11 @@ export function codeGenCtorCall(expr: Expr, env: GlobalEnv, localParams: Array<P
 
     /* Call the actual constructor with self as the argument. 
        The constructor is always the first entry for the class in table */
-    const classRef = env.classes.get(expr.name);
+    const classRef = env.classes.get(expr.name.name);
     result = result.concat([`(i64.load (i32.const 0)) ;; Calling the ctor func with self`,
 			    `(i64.const ${memId*8})`,
 			    `(i64.sub)`,
-			    `(call $${expr.name}$__init__)`]);
+			    `(call $${expr.name.name}$__init__)`]);
     
     /* Generate the return value */
     result = result.concat([`(i64.load (i32.const 0)) ;; Generating return value`,
@@ -477,10 +486,32 @@ export function codeGenExpr(expr : Expr, env : GlobalEnv, localParams : Array<Pa
     case "memExp":
       return codeGenMemberExpr(expr, env, source, localParams, classT);
     case "funcCall":
-      if (env.funcs.get(expr.name) != undefined) { /* Call to global function */
-	return codeGenFuncCall(expr, env, localParams, source, classT);
-      } else { /* call to ctor */
-	return codeGenCtorCall(expr, env, localParams, source, classT);
+      if (expr.name.tag == "id") { /* Call to global function */
+	if (env.funcs.get(expr.name.name) != undefined) { /* Call to global function */
+	  return codeGenFuncCall(expr, env, localParams, source, classT);
+	} else { /* call to ctor */
+	  return codeGenCtorCall(expr, env, localParams, source, classT);
+	}
+      } else if (expr.name.tag == "memExp") {
+	var result = codeGenExpr(expr.name.expr, env, localParams, source, classT);
+	const className = tc_expr(expr.name.expr, source, env, paramToEnvType(localParams), classT);
+	if (className.tag == "class") {
+	  const fCallAug: Expr = {
+	    tag: "funcCall",
+	    name: {tag: "id", pos: expr.name.pos, name: `${className.name}$` + expr.name.member.str},
+	    pos: expr.pos,
+	    prmPos: expr.prmPos,
+	    prmsPosArr: expr.prmsPosArr,
+	    args: expr.args
+	  }
+	  console.log("fCallAug = ");
+	  console.log(fCallAug);
+	  return result.concat(codeGenFuncCall(fCallAug, env, localParams, source, classT));
+	} else {
+	  err.internalError()
+	}
+      } else {
+	err.internalError();
       }
     case "bool":
       if (expr.value == true) {
