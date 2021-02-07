@@ -29,7 +29,7 @@ export type Stmt =
   | { tag: "pass", pos: Pos }
   | { tag: "func", content: Function }
   | { tag: "define", pos: Pos, name: Name, staticType: Type, value: Expr }
-  | { tag: "assign", pos: Pos, name: Name, value: Expr }
+  | { tag: "assign", pos: Pos, lhs: Expr, value: Expr, staticType?: Type }
   | { tag: "expr", expr: Expr }
   | { tag: "while", cond: Expr, whileBody: Array<Stmt> }
   | { tag: "if", cond: Expr, condPos: Pos, ifBody: Array<Stmt>, branches: Array<Branch>, elseBody: Array<Stmt> }
@@ -38,10 +38,11 @@ export type Stmt =
 
 export type Expr =
   | { tag: "num", pos: Pos, value: number }
+  | { tag: "self", pos: Pos }
   | { tag: "none", pos: Pos}
   | { tag: "bool", pos: Pos, value: boolean}
   | { tag: "id", pos: Pos, name: string }
-  | { tag: "memExp", pos: Pos, name: Name, member: Name }
+  | { tag: "memExp", pos: Pos, expr: Expr, member: Name }
   | { tag: "binExp", pos: Pos, name: string, arg: [Expr, Expr] }
   | { tag: "unaryExp", pos: Pos, name: string, arg: Expr }
   | { tag: "funcCall", pos: Pos, prmPos: Pos, prmsPosArr: Array<Pos>, name: string, args: Array<Expr> }

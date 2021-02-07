@@ -82,18 +82,19 @@ export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
       
       return stmt.staticType;
     case "assign":
-      if (env[stmt.name.str] == undefined) {
-	symLookupError(stmt.name.pos, `Cannot find value '${stmt.name}' in current scope`, source);
-      }
-
-      const assignLhsPos: Pos = stmt.name.pos;
-      const assignLhsExpr: Expr = { tag: "id", pos: assignLhsPos, name: stmt.name.str };
-      const assignLhsType = tc_expr(assignLhsExpr, source, gblEnv, funEnv);
-      
       const assignRhsType = tc_expr(stmt.value, source, gblEnv, funEnv);
-      if (neqT(assignLhsType, assignRhsType)) {
-	const errMsg = `Value of type ${tr(assignRhsType)} to '${stmt.name.str}' which is of type ${tr(assignLhsType)}`;
-	typeError(stmt.pos, errMsg, source);
+      if (stmt.lhs.tag == "id") {
+	if (env[stmt.lhs.name] == undefined) {
+	  symLookupError(stmt.lhs.pos, `Cannot find value '${stmt.lhs.name}' in current scope`, source);
+	}
+	const assignLhsPos: Pos = stmt.lhs.pos;
+	const assignLhsExpr: Expr = { tag: "id", pos: assignLhsPos, name: stmt.lhs.name };
+	const assignLhsType = tc_expr(assignLhsExpr, source, gblEnv, funEnv);
+	
+	if (neqT(assignLhsType, assignRhsType)) {
+	  const errMsg = `Value of type ${tr(assignRhsType)} to '${stmt.lhs.name}' which is of type ${tr(assignLhsType)}`;
+	  typeError(stmt.pos, errMsg, source);
+	}
       }
       return NoneT;
     case "while":
@@ -162,11 +163,19 @@ export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
   }
 }
 
-export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvType>{}): Type {
+export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvType>{}, classEnv: Type = undefined): Type {
+  console.log("Typechecking expression:");
+  console.log(expr);
   switch(expr.tag) {
+    case "self":
+      if (classEnv == undefined) {
+	scopeError(expr.pos, `Cannot use self keyword without a class`, source);
+      } else {
+	return classEnv;
+      }
     case "bool":
       return BoolT;
-      
+
     case "num":
       return IntT;
       
@@ -179,6 +188,7 @@ export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: 
       } else {
 	return env[expr.name];
       }
+
     case "funcCall":
       const callName = expr.name;
       var retType: Type = undefined;

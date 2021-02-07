@@ -57,13 +57,17 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr {
 	pos: idPos,
 	name: s.substring(c.from, c.to)
       }
+    case "self":
+      return {
+	tag: "self",
+	pos: getSourcePos(c, s)
+      }
     case "MemberExpression":
       const pos = getSourcePos(c, s);
       
       c.firstChild();
       
-      const nameStr = s.substring(c.from, c.to);
-      const namePos = getSourcePos(c, s);
+      const lhsExpr = traverseExpr(c, s);
 
       c.nextSibling();
       c.nextSibling();
@@ -76,7 +80,7 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr {
       return {
 	tag: "memExp",
 	pos: pos,
-	name: { str: nameStr, pos: namePos},
+	expr: lhsExpr,
 	member: { str: memStr, pos: memPos}
       };
     case "CallExpression":
@@ -432,9 +436,8 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
       const assignPos = getSourcePos(c, s);
       
       c.firstChild(); // go to name
-
-      const name = s.substring(c.from, c.to);
-      const namePos = getSourcePos(c, s);
+      
+      const lhs = traverseExpr(c, s);
       
       c.nextSibling(); // go to colon
 
@@ -453,19 +456,19 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
       const value = traverseExpr(c, s);
       c.parent();
 
-      if (staticType != undefined) {
+      if (staticType != undefined && lhs.tag == "id") {
 	return {
           tag: "define",
 	  pos: assignPos,
 	  staticType: staticType,
-          name: { str: name, pos: namePos },
+          name: { str: lhs.name, pos: lhs.pos },
           value: value
 	}
       } else {
 	return {
 	  tag: "assign",
 	  pos: assignPos,
-	  name: { str: name, pos: namePos },
+	  lhs: lhs,
 	  value: value
 	}
       }

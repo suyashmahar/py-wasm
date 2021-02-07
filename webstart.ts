@@ -36,6 +36,8 @@ print_pattern(10)
     n : int = 2
     d : int = 3
     def __init__(self : Rat):
+        self.n = 200
+        
         pass
         
 r1 : Rat = None
