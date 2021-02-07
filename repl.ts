@@ -22,9 +22,9 @@ export class BasicREPL {
     this.currentEnv = {
       globals: new Map(),
       classes: new Map(),
-      funcs: new Map([['print', { members: [NoneT], retType: IntT}],
+      funcs: new Map([['print', { name: "print", members: [NoneT], retType: IntT}],
 		     ]),
-      offset: 0,
+      offset: 8,
       classOffset: 0
     };
   }

@@ -3,6 +3,7 @@
 import { parser } from "lezer-python";
 import { TreeCursor } from "lezer-tree";
 import { Name, Function, Expr, Stmt, Parameter, Pos, Branch, Type, NoneT, BoolT, IntT } from "./ast";
+import * as err from "./error";
 import { tr } from "./common";
 
 export function getSourcePos(c : TreeCursor, s : string) : Pos {
@@ -17,38 +18,6 @@ export function getSourcePos(c : TreeCursor, s : string) : Pos {
     len: c.node.to - c.node.from 
   }
 }
-
-export function padNum(num: number, width: number): string {
-  return String(num).padStart(width, " ");
-}
-
-export function getDecorator(pos: Pos, source: string): string {
-  const splitSource = source.split("\n");
-  var errLinesArr = [padNum(pos.line-1, 4) + "| " + splitSource[pos.line-2],
-		       padNum(pos.line, 4) + "| " + splitSource[pos.line-1]];
-
-  if (pos.line == 1) {
-    errLinesArr = [errLinesArr[1]];
-  }
-  
-  const errLines = errLinesArr.join("\n");
-  const decorator = " ".repeat(pos.col+5) + "^".repeat(pos.len);
-  
-  return [errLines, decorator].join("\n");
-}
-
-export function genericError(errType: string, pos: Pos, msg: string, source: string) {
-  const errTxt = `${errType}: ${msg}`
-  
-  const text: string = [getDecorator(pos, source), errTxt].join('\n');
-  throw text;
-}
-
-export const typeError = (pos: Pos, msg: string, source: string) => genericError('TypeError', pos, msg, source);
-export const symLookupError = (pos: Pos, msg: string, source: string) => genericError('SymbolLookupError', pos, msg, source);
-export const argError = (pos: Pos, msg: string, source: string) => genericError('ArgumentError', pos, msg, source);
-export const scopeError = (pos: Pos, msg: string, source: string) => genericError('ScopeError', pos, msg, source);
-export const parseError = (pos: Pos, msg: string, source: string) => genericError('ParseError', pos, msg, source);
 
 export function traverseExpr(c : TreeCursor, s : string) : Expr {
   switch(c.type.name) {
@@ -87,7 +56,29 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr {
         tag: "id",
 	pos: idPos,
 	name: s.substring(c.from, c.to)
-      }     
+      }
+    case "MemberExpression":
+      const pos = getSourcePos(c, s);
+      
+      c.firstChild();
+      
+      const nameStr = s.substring(c.from, c.to);
+      const namePos = getSourcePos(c, s);
+
+      c.nextSibling();
+      c.nextSibling();
+
+      const memStr = s.substring(c.from, c.to);
+      const memPos = getSourcePos(c, s);
+
+      c.parent();
+
+      return {
+	tag: "memExp",
+	pos: pos,
+	name: { str: nameStr, pos: namePos},
+	member: { str: memStr, pos: memPos}
+      };
     case "CallExpression":
       const cExpPos = getSourcePos(c, s);
       
@@ -176,7 +167,7 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr {
       return expr;
     default:
       console.log(c);
-      parseError(getSourcePos(c, s), `Parser failed (miserably), could not parse the expression.`, s); 
+      err.parseError(getSourcePos(c, s), `Parser failed (miserably), could not parse the expression.`, s); 
   }
 }
 
@@ -236,7 +227,7 @@ export function traverseClass(c: TreeCursor, s: string): Stmt {
 	funcs.push(bStmt.content);
 	break;
       default:
-	scopeError({line: 0, col: 0, len: 0}, `Can't have ${bStmt.tag} in a class defintion.`, s);
+	err.scopeError({line: 0, col: 0, len: 0}, `Can't have ${bStmt.tag} in a class defintion.`, s);
 	break;
     }
   });
@@ -517,7 +508,7 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
       c.parent();
       return { tag: "return", pos: getSourcePos(c, s), expr: retExpr };
     default:
-      typeError(getSourcePos(c, s), `Could not parse stmt, failed miserably`, s);
+      err.typeError(getSourcePos(c, s), `Could not parse stmt, failed miserably`, s);
   }
 }
 

@@ -33,14 +33,15 @@ print_pattern(10)
 
     document.getElementById("ex-class").addEventListener("click", function() {
       editor.setValue(`class Rat(object):
-    n : int = 0
-    d : int = 0
+    n : int = 2
+    d : int = 3
     def __init__(self : Rat):
         pass
         
 r1 : Rat = None
 r1 = Rat()
-`, -1);
+print(r1.n)
+`, -1);2
     });
     
     document.getElementById("test-python").addEventListener("click", function() {
@@ -179,7 +180,7 @@ pass
       
       updateNameMap : (env : GlobalEnv) => {
         env.globals.forEach((pos, name) => {
-          importObject.nameMap[pos] = name;
+          importObject.nameMap[pos[1]] = name;
         })
       }
 

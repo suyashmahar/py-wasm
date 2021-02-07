@@ -3,6 +3,7 @@
 import { Type, Expr, Stmt } from "./ast";
 
 export type FuncEnv = {
+  name: string;
   members: Array<Type>;
   retType: Type;
   body?: Array<Stmt>;
@@ -17,7 +18,7 @@ export type ClassEnv = {
 
 // Numbers are offsets into global memory
 export type GlobalEnv = {
-  globals: Map<string, number>;
+  globals: Map<string, [Type, number]>; // Type and offset
   funcs: Map<string, FuncEnv>; // Stores the argument types and return
 			       // type for a functions
   classes: Map<string, ClassEnv>; // Classes are a 

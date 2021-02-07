@@ -1,9 +1,10 @@
 // -*- mode: typescript; typescript-indent-level: 2; -*-
 
 import { Stmt, Expr, Parameter, Pos, Type, NoneT, BoolT, IntT } from "./ast";
-import { parse, typeError, symLookupError, argError, scopeError } from "./parser";
+import { parse } from "./parser";
+import * as err from "./error";
 import { typecheck }  from "./tc";
-import { getClassHeapSize, getClassTableSize, getClassMemVars } from "./classes";
+import { getClassHeapSize, getClassTableSize, getClassMemVars, getFieldOffset, getLocal, getClassName } from "./classes";
 import { codeGenOp, codeGenUOp } from "./codegen_operators";
 import { GlobalEnv, FuncEnv, ClassEnv } from "./env"
 import * as cmn from "./common";
@@ -18,27 +19,16 @@ export const emptyEnv = { globals: new Map(), offset: 0 };
 type CompileResult = {
   wasmSource: string,
   newEnv: GlobalEnv,
-  funcs: string
+  funcs: string,
 };
 
-function getEnv(pos: Pos, env: GlobalEnv, name: string, source: string) {
+function getEnv(pos: Pos, env: GlobalEnv, name: string, source: string) : number {
   const result = env.globals.get(name);
   if (result == undefined) {
     
-    scopeError(pos, `Variable ${name} not in scope`, source);
+    err.scopeError(pos, `Variable ${name} not in scope`, source);
   }
-  return result;
-}
-
-function getLocal(localParams: Array<Parameter>, name: string) : boolean {
-  var result:boolean = false;
-  localParams.forEach((p) => {
-    if (p.name == name) {
-      result = true;
-    }
-  })
-  
-  return result;
+  return result[1];
 }
 
 export function augmentEnv(env: GlobalEnv, stmts: Array<Stmt>) : GlobalEnv {
@@ -51,7 +41,7 @@ export function augmentEnv(env: GlobalEnv, stmts: Array<Stmt>) : GlobalEnv {
   stmts.forEach((s) => {
     switch(s.tag) {
       case "define":
-        newEnv.set(s.name.str, newOffset);
+        newEnv.set(s.name.str, [s.staticType, newOffset]);
         newOffset += 8;
         break;
       case "func":
@@ -59,7 +49,7 @@ export function augmentEnv(env: GlobalEnv, stmts: Array<Stmt>) : GlobalEnv {
 	s.content.parameters.forEach(param => {
 	  paramTypes.push(param.type);
 	});
-	newFuncs.set(s.content.name, {members: paramTypes, retType: s.content.ret});
+	newFuncs.set(s.content.name, {name: s.content.name, members: paramTypes, retType: s.content.ret});
 	break;
       case "class":
 	var memberVars: Map<string, [Expr, Type]> = new Map();
@@ -79,24 +69,23 @@ export function augmentEnv(env: GlobalEnv, stmts: Array<Stmt>) : GlobalEnv {
 	    params.push(p.type);
 	  });
 
-	  var fEnv: FuncEnv = {members: params, retType: f.ret};
 	  var funName = "";
+	  var fEnv: FuncEnv;
 
 	  if (f.name == "__init__") {
-	    ctor = fEnv;
-	    ctor.body = f.body;
+	    ctor = { name: "__init__", members:params,  body: f.body, retType: f.ret };
 
 	    funName = `${s.name.str}$ctor`;
 	    
 	  } else {
 	    memberFuncs.set(f.name, fEnv);
 
-	    funName = `${s.name.str}$f.name`
+	    funName = `${s.name.str}$f.name`;
 	  }
-
+	  fEnv = {name: f.name, members: params, retType: f.ret};
 	  newFuncs.set(funName, fEnv);
 	});
-	
+
 	const classVal: ClassEnv = {
 	  tableOff: newClassOff,
 	  memberVars: memberVars,
@@ -106,13 +95,18 @@ export function augmentEnv(env: GlobalEnv, stmts: Array<Stmt>) : GlobalEnv {
 	newClasses.set(s.name.str, classVal);
     }
   });
-  return {
+  const result: GlobalEnv = {
     globals: newEnv,
     classes: newClasses,
     offset: newOffset,
     classOffset: newClassOff,
     funcs: newFuncs
   }
+
+  console.log("New gbl env:");
+  console.log(result);
+
+  return result;
 }
 
 export function compile(source: string, env: GlobalEnv) : CompileResult {
@@ -125,10 +119,16 @@ export function compile(source: string, env: GlobalEnv) : CompileResult {
         break;
     }
   }); 
-  const scratchVar : string = `(local $$last i64)`;
+
+  const withDefines = augmentEnv(env, ast);
+  
+  const scratchVar : string = `(local $$last i64)
+(i32.const 0)
+(i64.const ${withDefines.offset})
+(i64.store) ;; Save the new heap offset`;
+  
   const localDefines = [scratchVar];
   
-  const withDefines = augmentEnv(env, ast);
 
   /* Typecheck stuff */
   typecheck(ast, source, withDefines);
@@ -145,7 +145,7 @@ export function compile(source: string, env: GlobalEnv) : CompileResult {
   return {
     wasmSource: commands.join("\n"),
     newEnv: withDefines,
-    funcs: funcsStr
+    funcs: funcsStr,
   };
 }
 
@@ -217,7 +217,7 @@ function codeGenRet(stmt : Stmt, env : GlobalEnv, localParams: Array<Parameter>,
     console.log(result);
     return result.concat([`(return)`]);
   } else {
-    throw "Cannot run codeGenRet on non return statement";
+    err.internalError();
   }
 }
 
@@ -231,10 +231,43 @@ function codeGenClass(stmt: Stmt, env : GlobalEnv, source: string) : Array<strin
       codeGenFunc(funStmt, env, source, `$${stmt.name.str}`, "");
     });
   } else {
-    throw `Something went wrong`;
+    err.internalError();
   }
   
   return [];
+}
+
+function codeGenMemberExpr(expr: Expr, env: GlobalEnv, source: string, localParams: Array<Parameter> = []): Array<string> {
+  if (expr.tag == "memExp") {
+    var result: Array<string> = [];
+
+    const varType = getClassName(expr.name.str, env, localParams);
+    const varName = expr.name.str;
+    
+    var className: string = "";
+    if (varType.tag == "class") {
+      className = varType.name;
+    } else {
+      err.internalError()
+    }
+    
+    const memName = expr.member.str;
+
+    /* Get the obj pointer */
+    const varExpr: Expr = { tag: "id", pos: expr.name.pos, name: varName };
+    result = result.concat(codeGenExpr(varExpr, env, localParams, source));
+
+    /* Add the field offset */
+    console.log("ClassName: " + className)
+    var result = [`(i64.load (i32.const ${getEnv(expr.name.pos, env, varName, source)})) ;; Get the object's location`,
+		  `(i64.const ${getFieldOffset(className, memName, env)}) ;; Offset for field ${memName}`,
+		  `(i64.add)`,
+		  `(i32.wrap/i64)`,
+		  `(i64.load) ;;  Load ${className}.${memName}`];
+    return result;
+  } else {
+    err.internalError();
+  }
 }
 
 function codeGen(stmt: Stmt, env : GlobalEnv, source: string, localParams: Array<Parameter> = []) : Array<string> {
@@ -376,8 +409,8 @@ export function codeGenCtorCall(expr: Expr, env: GlobalEnv, localParams: Array<P
 
     const classMemVars: Map<string, [Expr, Type]> = getClassMemVars(expr.name, env);
     var memId = 0;
-    classMemVars.forEach((val, _) => {
-      result = result.concat([`(i64.load (i32.const 0))`,
+    classMemVars.forEach((val, key) => {
+      result = result.concat([`(i64.load (i32.const 0)) ;; Ctor, member ${key} init`,
 			      `(i64.const ${memId*8})`,
 			      `(i64.add)`,
 			      `(i32.wrap/i64)`]);
@@ -388,7 +421,7 @@ export function codeGenCtorCall(expr: Expr, env: GlobalEnv, localParams: Array<P
     });
 
     /* Increase the heap offset */
-    result = result.concat([`(i32.const 0)`,
+    result = result.concat([`(i32.const 0) ;; Increasing heap offset by class size, ${memId*8} bytes`,
 			    `(i64.load (i32.const 0))`,
 			    `(i64.const ${memId*8})`,
 			    `(i64.add)`,
@@ -397,15 +430,15 @@ export function codeGenCtorCall(expr: Expr, env: GlobalEnv, localParams: Array<P
     /* Call the actual constructor with self as the argument. 
        The constructor is always the first entry for the class in table */
     const classRef = env.classes.get(expr.name);
-    result = result.concat([`(i64.load (i32.const 0))`,
+    result = result.concat([`(i64.load (i32.const 0)) ;; Calling the ctor func with self`,
 			    `(i64.const ${memId*8})`,
 			    `(i64.sub)`,
 			    `(call $${expr.name}$__init__)`]);
     
     /* Generate the return value */
-    result = result.concat([`(i64.load (i32.const 0))`,
+    result = result.concat([`(i64.load (i32.const 0)) ;; Generating return value`,
 			    `(i64.const ${memId*8})`,
-			    `(i64.sub)`]);
+			    `(i64.sub) ;; Ctor ends`]);
     
     return result;
   } else {
@@ -416,6 +449,8 @@ export function codeGenCtorCall(expr: Expr, env: GlobalEnv, localParams: Array<P
 export function codeGenExpr(expr : Expr, env : GlobalEnv, localParams : Array<Parameter>, source: string) : Array<string> {
   console.log(expr.tag);
   switch(expr.tag) {
+    case "memExp":
+      return codeGenMemberExpr(expr, env, source, localParams);
     case "funcCall":
       if (env.funcs.get(expr.name) != undefined) { /* Call to global function */
 	return codeGenFuncCall(expr, env, localParams, source);

@@ -1,6 +1,6 @@
 // -*- mode: typescript; typescript-indent-level: 2; -*-
 
-import { typeError, symLookupError, argError, scopeError, parseError } from './parser';
+import { typeError, symLookupError, argError, scopeError, parseError } from './error';
 import { GlobalEnv } from "./env";
 import { Type, Value, Expr, Stmt, Parameter, Pos, Branch, BoolT, IntT, NoneT } from "./ast";
 import { tr, eqT, neqT } from "./common"

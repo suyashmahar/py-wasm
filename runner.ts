@@ -47,7 +47,7 @@ export async function run(source : string, config: any) : Promise<[any, GlobalEn
     (func $print (import "imports" "print") (param i64) (result i64))
     (import "js" "memory" (memory 1))
     (import "js" "table" (table 1 funcref))
-    (func (export "exported_func") ${returnType}
+    (func (export "exported_func") ${returnType}      
       ${compiled.wasmSource}
       ${returnExpr}
     )

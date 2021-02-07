@@ -41,6 +41,7 @@ export type Expr =
   | { tag: "none", pos: Pos}
   | { tag: "bool", pos: Pos, value: boolean}
   | { tag: "id", pos: Pos, name: string }
+  | { tag: "memExp", pos: Pos, name: Name, member: Name }
   | { tag: "binExp", pos: Pos, name: string, arg: [Expr, Expr] }
   | { tag: "unaryExp", pos: Pos, name: string, arg: Expr }
   | { tag: "funcCall", pos: Pos, prmPos: Pos, prmsPosArr: Array<Pos>, name: string, args: Array<Expr> }
