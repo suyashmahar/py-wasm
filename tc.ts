@@ -1,7 +1,7 @@
 // -*- mode: typescript; typescript-indent-level: 2; -*-
 
 import { internalError, typeError, symLookupError, argError, scopeError, parseError } from './error';
-import { GlobalEnv } from "./env";
+import { GlobalEnv, ClassEnv, FuncEnv } from "./env";
 import { Type, Value, Expr, Stmt, Parameter, Pos, Branch, BoolT, IntT, NoneT } from "./ast";
 import { tr, eqT, neqT, canAssignNone } from "./common"
 
@@ -249,7 +249,7 @@ export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: 
 	const memberFunName = callExpr.member.str;
 
 	if (firstPart.tag == "class") {
-	  const classRef = gblEnv.classes.get(firstPart.name);
+	  const classRef: ClassEnv = gblEnv.classes.get(firstPart.name);
 	  if (classRef == undefined) {
 	    internalError();
 	  } else {
@@ -258,6 +258,28 @@ export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: 
 	      scopeError(callExpr.member.pos, `Function ${memberFunName}() is not a member of class ${firstPart.name}.`, source);
 	    } else {
 	      retType = memFunRef.retType;
+
+	      /* Typecheck argument count */
+	      const expectedArgCnt = classRef.memberFuncs.get(memFunRef.name).members.length-1;
+	      const gotArgCnt = expr.args.length;
+
+	      if (expectedArgCnt != gotArgCnt) {
+		argError(expr.prmPos, `Expected ${expectedArgCnt}, got ${gotArgCnt} arguments.`, source);
+	      }
+
+	      /* Typecheck argument's type */
+	      var prmIter = 0;
+	      expr.args.forEach(arg => {
+		if (prmIter != 0) { /* Skip the first argument which is self for memExp */
+		  const expArgType = memFunRef.members[prmIter];
+		  const gotArgType = tc_expr(arg, source, gblEnv, funEnv, classEnv);
+		  if (neqT(expArgType, gotArgType)) {
+		    typeError(arg.pos, `Function ${firstPart.name}.${memberFunName}() expects its argument at pos ${prmIter} to be of type ${tr(expArgType)}, got ${tr(gotArgType)}.`, source);
+		  }
+		}
+		prmIter += 1;
+	      });
+	      
 	    }
 	  }
 	} else {
