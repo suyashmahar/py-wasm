@@ -62,8 +62,75 @@ export function tc_uExp(pos: Pos, op: string, exprType: Type, source: string) {
   }
 }
 
+export function tc_class(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvType>{}) : Type {
+  if (stmt.tag == "class") {
+
+    var foundCtor = false;
+    var nameMap: Record<string, Pos> = {}
+    
+    stmt.body.funcs.forEach(f => {
+      if (f.name.str == '__init__') { /* Constructor for the class */
+	foundCtor = true;
+
+	if (f.parameters.length != 1) {
+	  argError(f.parametersPos, `Constructor should only have self as its argument`, source);
+	}
+
+	if (f.ret.tag != "none") {
+	  typeError(f.retPos, `Constructor cannot have an explicit return type`, source);
+	}
+      }
+
+      /* Check for duplicate functions */
+      const prevPos = nameMap[f.name.str];
+      if (prevPos != undefined) {
+	scopeError(f.name.pos, `Function redefined in the same class, first defined at Line ${prevPos.line}`, source);
+      }
+      nameMap[f.name.str] = f.name.pos;
+      
+      /* Typecheck function's content */
+      const fStmt: Stmt = {tag: "func", content: f};
+      tc_func(fStmt, source, gblEnv, funEnv);
+    });
+
+    
+    return {tag: "class", name: stmt.name.str};
+  } else {
+    internalError();
+  }
+}
+
+export function tc_func(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvType>{}) : Type {
+  if (stmt.tag == "func") {
+    stmt.content.body.forEach(s => {
+      if (s.tag == "define") {
+	funEnv[s.name.str] = s.staticType;
+      }
+    });
+    
+    stmt.content.parameters.forEach(param => { funEnv[param.name] = param.type; });
+
+    stmt.content.body.forEach(s => {
+      tc_stmt(s, source, gblEnv, funEnv);
+      if (s.tag == "return") {
+	const retType = tc_expr(s.expr, source, gblEnv, funEnv);
+	if (retType != stmt.content.ret) {
+	  const throwMsg = `Return's type ${tr(retType)} and function's return type ${tr(stmt.content.ret)} don't match`;
+	  typeError(s.pos, throwMsg, source);
+	}
+      }
+    });
+
+    return NoneT;
+  } else {
+    internalError();
+  }
+}
+
 export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvType>{}) : Type {
   switch (stmt.tag) {
+    case "class":
+      return tc_class(stmt, source, gblEnv, funEnv);
     case "expr":
       return tc_expr(stmt.expr, source, gblEnv, funEnv);
     case "pass":
@@ -145,24 +212,7 @@ export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
 
       return retType;
     case "func":
-      stmt.content.body.forEach(s => {
-	if (s.tag == "define") {
-	  funEnv[s.name.str] = s.staticType;
-	}
-      });
-      
-      stmt.content.parameters.forEach(param => { funEnv[param.name] = param.type; });
-
-      stmt.content.body.forEach(s => {
-	tc_stmt(s, source, gblEnv, funEnv);
-	if (s.tag == "return") {
-	  const retType = tc_expr(s.expr, source, gblEnv, funEnv);
-	  if (retType != stmt.content.ret) {
-	    const throwMsg = `Return's type ${tr(retType)} and function's return type ${tr(stmt.content.ret)} don't match`;
-	    typeError(s.pos, throwMsg, source);
-	  }
-	}
-      });
+      return tc_func(stmt, source, gblEnv, funEnv);
   }
 }
 

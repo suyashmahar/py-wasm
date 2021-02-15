@@ -255,7 +255,10 @@ export function traverseFunction(c: TreeCursor, s: string) : Stmt {
   c.firstChild(); // Descend to the function
   c.nextSibling(); // Skip the 'def' keyword
 
-  const funName = s.substring(c.node.from, c.node.to);
+  const funName: Name = {
+    str: s.substring(c.node.from, c.node.to),
+    pos: getSourcePos(c, s)
+  };
 
   c.nextSibling(); // Skip to the parameter list
   c.firstChild(); // Descend to the variable list
@@ -295,14 +298,20 @@ export function traverseFunction(c: TreeCursor, s: string) : Stmt {
   };
 
   c.parent(); // Get out of the parameter list
+  const parametersPos = getSourcePos(c, s);
+  var retPos: Pos = getSourcePos(c, s);   // Make return's position
+					  // same as the parameters
+					  // incase the function
+					  // doesn't have any explicit
+					  // return type
   
   c.nextSibling(); // Go to the function's typedef
 
   var retType: Type = NoneT;
-  
   if (c.node.name != "Body") {
     c.firstChild();
     retType = parseType(s, s.substring(c.node.from, c.node.to), getSourcePos(c, s));
+    retPos = getSourcePos(c, s);
     c.parent(); // Go back to the function
   }
   
@@ -324,7 +333,9 @@ export function traverseFunction(c: TreeCursor, s: string) : Stmt {
       pos: getSourcePos(c, s),
       name: funName,
       parameters: paramList,
+      parametersPos: parametersPos,
       ret: retType,
+      retPos: retPos,
       body: bodyStmts
     }
   }

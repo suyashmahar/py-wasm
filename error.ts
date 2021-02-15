@@ -1,3 +1,5 @@
+// -*- mode: typescript; typescript-indent-level: 2; -*-
+
 import { Pos } from "./ast";
 
 export const dummyPos: Pos = { line: 0, col: 0, len: 0 };
@@ -14,9 +16,10 @@ export function getDecorator(pos: Pos, source: string): string {
   if (pos.line == 1) {
     errLinesArr = [errLinesArr[1]];
   }
-  
+
+  const offset = pos.line == 1 ? 1 : 0;
   const errLines = errLinesArr.join("\n");
-  const decorator = " ".repeat(pos.col+5) + "^".repeat(pos.len);
+  const decorator = " ".repeat(pos.col + 5 + offset) + "^".repeat(pos.len);
   
   return [errLines, decorator].join("\n");
 }

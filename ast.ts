@@ -23,7 +23,7 @@ export const ClassT: Type = { tag: "class", name: undefined };
 
 export type Name = { str: string, pos: Pos }
 export type ClassBody = { iVars: Array<Stmt>, inherits: Array<Name>,  funcs: Array<Function> };
-export type Function = { pos: Pos, name: string, parameters: Array<Parameter>, ret: Type, body: Array<Stmt> };
+export type Function = { pos: Pos, name: Name, parametersPos: Pos, parameters: Array<Parameter>, ret: Type, retPos: Pos, body: Array<Stmt> };
 
 export type Stmt =
   | { tag: "pass", pos: Pos }

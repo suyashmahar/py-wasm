@@ -58,7 +58,7 @@ export function augmentEnv(env: envM.GlobalEnv, stmts: Array<Stmt>) : envM.Globa
 	s.content.parameters.forEach(param => {
 	  paramTypes.push(param.type);
 	});
-	newFuncs.set(s.content.name, {name: s.content.name, members: paramTypes, retType: s.content.ret});
+	newFuncs.set(s.content.name.str, {name: s.content.name.str, members: paramTypes, retType: s.content.ret});
 	break;
       case "class":
 	var memberVars: Map<string, [Expr, Type]> = new Map();
@@ -81,18 +81,18 @@ export function augmentEnv(env: envM.GlobalEnv, stmts: Array<Stmt>) : envM.Globa
 	  var funName = "";
 	  var fEnv: FuncEnv;
 
-	  if (f.name == "__init__") {
+	  if (f.name.str == "__init__") {
 	    ctor = { name: "__init__", members:params,  body: f.body, retType: f.ret };
 
 	    funName = `${s.name.str}$ctor`;
 	    
 	  } else {
-	    fEnv = {name: f.name, members: params, retType: f.ret};
-	    memberFuncs.set(f.name, fEnv);
+	    fEnv = {name: f.name.str, members: params, retType: f.ret};
+	    memberFuncs.set(f.name.str, fEnv);
 
 	    funName = `${s.name.str}$f.name`;
 	  }
-	  fEnv = {name: f.name, members: params, retType: f.ret};
+	  fEnv = {name: f.name.str, members: params, retType: f.ret};
 	  newFuncs.set(funName, fEnv);
 	});
 
@@ -168,7 +168,7 @@ function codeGenFunc(stmt: Stmt, env : envM.GlobalEnv, source: string, prefix: s
   if (stmt.tag == "func") {
     var result: Array<string> = [``,``];
 
-    var header = `(func ${prefix}$${stmt.content.name}`;
+    var header = `(func ${prefix}$${stmt.content.name.str}`;
     var funcLocals:Array<Parameter> = stmt.content.parameters;
 
     stmt.content.parameters.forEach(param => {
@@ -236,7 +236,7 @@ function codeGenClass(stmt: Stmt, env : envM.GlobalEnv, source: string, classT: 
 	tag: "func",
 	content: fun
       };
-      const resultType = fun.name == "__init__" ? "" : "(result i64)";
+      const resultType = fun.name.str == "__init__" ? "" : "(result i64)";
       
       codeGenFunc(funStmt, env, source, `$${stmt.name.str}`,
 		  resultType, classT={tag: "class", name: stmt.name.str});
