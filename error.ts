@@ -1,5 +1,7 @@
 import { Pos } from "./ast";
 
+export const dummyPos: Pos = { line: 0, col: 0, len: 0 };
+
 export function padNum(num: number, width: number): string {
   return String(num).padStart(width, " ");
 }
@@ -30,6 +32,8 @@ export const typeError = (pos: Pos, msg: string, source: string): never => gener
 export const symLookupError = (pos: Pos, msg: string, source: string): never => genericError('SymbolLookupError', pos, msg, source);
 export const argError = (pos: Pos, msg: string, source: string): never => genericError('ArgumentError', pos, msg, source);
 export const scopeError = (pos: Pos, msg: string, source: string): never => genericError('ScopeError', pos, msg, source);
+export const valError = (pos: Pos, msg: string, source: string): never => genericError('ValueError', pos, msg, source);
+
 export const parseError = (pos: Pos, msg: string, source: string): never => genericError('ParseError', pos, msg, source);
 export function internalError(): never {
     const errTxt = `CompilerError: An internal function ran into an invalid state. Please report this bug to the compiler devs.`;

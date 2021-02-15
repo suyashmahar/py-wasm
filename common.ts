@@ -1,10 +1,59 @@
 // -*- mode: typescript; typescript-indent-level: 2; -*-
 
-import { Type, NoneT, IntT, BoolT } from "./ast";
+import { Type, NoneT, IntT, BoolT, Value } from "./ast";
+import { valError, dummyPos } from "./error";
 
-export const TRUE_VAL = "4611686018427387905"; // (1<<62)+1
+export const TRUE_VAL  = "4611686018427387905"; // (1<<62)+1
 export const FALSE_VAL = "4611686018427387904"; // 1<<62
-export const NONE_VAL = "2305843009213693952"; // 1<<61
+export const NONE_VAL  = "2305843009213693952"; // 1<<61
+export const PTR_VAL   = "1152921504606846976"; // 1<<60
+
+export const FALSE_BI = BigInt(1) << BigInt(62);
+export const TRUE_BI  = FALSE_BI + BigInt(1);
+export const NONE_BI  = BigInt(1) << BigInt(61);
+export const PTR_BI   = BigInt(1) << BigInt(60);
+
+export function i64ToValue(val: any, classMap: Map<number, string> = new Map()): Value {
+  if (val == undefined) {
+    console.log("Input undefined, returning undefined");
+    return undefined;
+  }
+  
+  const bigVal = BigInt(val);
+  const upper32 = bigVal >> BigInt(32);
+  const lower32 = bigVal & ((BigInt(1) << BigInt(32)) - BigInt(1));
+  
+  var result: Value = undefined;
+  switch (bigVal) {
+    case FALSE_BI:
+      result = { tag: "bool", value: false };
+      break;
+    case TRUE_BI:
+      result = { tag: "bool", value: true };
+      break;
+    case NONE_BI:
+      result = { tag: "none" };
+      break;
+    default:
+      switch (upper32) {
+	case (PTR_BI >> BigInt(32)):
+	  const classNameRef = classMap.get(Number(lower32));
+	  const className = classNameRef == undefined ? "unknown" : classNameRef;
+	  
+	  result = { tag: "object", name: className, address: Number(lower32) };
+	  break;
+	default:
+	  if (upper32 != BigInt(0) && (upper32 + BigInt(1)) != BigInt(0)) {
+	    valError(dummyPos, `Unknown value ${val}`, "");
+	  }
+	  result = { tag: "num", value: Number(bigVal) };
+	  break;
+      }
+      break;
+  }
+
+  return result;
+}
 
 export function tr(type: Type): string {
   switch (type) {
@@ -39,6 +88,10 @@ export function neqT(type1: Type, type2: Type): boolean {
   return !eqT(type1, type2);
 }
 
+export function canAssignNone(type1: Type): boolean {
+  return type1.tag == "class";
+}
+
 export function strToType(str: string): Type {
   switch (str) {
     case "None":
@@ -49,5 +102,27 @@ export function strToType(str: string): Type {
       return BoolT;
     default:
       throw `Can't translate type '${str}'`;
+  }
+}
+
+export function valueToStr(arg: Value): string {
+  if (arg == undefined)
+    return undefined;
+  
+  switch (arg.tag) {
+    case "bool":
+      if (arg.value) {
+	return "True";
+      } else {
+	return "False";
+      }
+    case "none":
+      return `None`;
+    case "num":
+      return `${arg.value}`;
+    case "object":
+      return `<${arg.name} ${arg.address}>`;
+    default:
+      throw `Can't translate`;
   }
 }

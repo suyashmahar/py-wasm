@@ -170,7 +170,6 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr {
       
       return expr;
     default:
-      console.log(c);
       err.parseError(getSourcePos(c, s), `Parser failed (miserably), could not parse the expression.`, s); 
   }
 }
@@ -248,9 +247,6 @@ export function traverseClass(c: TreeCursor, s: string): Stmt {
       funcs: funcs
     }
   }
-
-  console.log("Class parsed");
-  console.log(result);
 
   return result;  
 }
@@ -337,7 +333,6 @@ export function traverseFunction(c: TreeCursor, s: string) : Stmt {
 }
 
 export function traverseStmt(c : TreeCursor, s : string) : Stmt {
-  console.log(c.node);
   switch(c.node.type.name) {
     case "PassStatement":
       return { tag: "pass", pos: getSourcePos(c, s) };
@@ -361,9 +356,6 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
 	ifBody = ifBody.concat(traverseStmt(c, s));
       } while (c.nextSibling());
 
-      console.log("ifbody:");
-      console.log(ifBody);
-                
       c.parent();
 
       var elseBody : Array<Stmt> = [];
@@ -427,9 +419,6 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
 	branches: branches,
 	elseBody: elseBody
       }
-
-      console.log("Result ");
-      console.log(result);
 
       c.parent();
 
@@ -526,7 +515,6 @@ export function traverse(c : TreeCursor, s : string) : Array<Stmt> {
       do {
         stmts.push(traverseStmt(c, s));
       } while(c.nextSibling())
-      console.log("traversed " + stmts.length + " statements ", stmts, "stopped at " , c.node);
       return stmts;
     default:
       throw new Error("Could not parse program at " + c.node.from + " " + c.node.to);

@@ -3,7 +3,7 @@
 import { internalError, typeError, symLookupError, argError, scopeError, parseError } from './error';
 import { GlobalEnv } from "./env";
 import { Type, Value, Expr, Stmt, Parameter, Pos, Branch, BoolT, IntT, NoneT } from "./ast";
-import { tr, eqT, neqT } from "./common"
+import { tr, eqT, neqT, canAssignNone } from "./common"
 
 export type EnvType = Record<string, Type>;
 export var env : EnvType = {};
@@ -16,7 +16,6 @@ export function tc_binExp(pos: Pos, op : string, leftType : Type, rightType : Ty
     case "*":
     case "%":
     case "//":
-      console.log("arguments are: " + leftType + " and " + rightType);
       if (leftType != IntT || rightType != IntT) {
 	const errMsg = `Operator ${op} expects both args to be int, got ${tr(leftType)} and ${tr(rightType)}`;
 	typeError(pos, errMsg, source);
@@ -73,9 +72,13 @@ export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
       const rhsType = tc_expr(stmt.value, source, gblEnv, funEnv);
       const lhsType = stmt.staticType;
 
-      if (rhsType != lhsType && rhsType != NoneT) {
+      if (neqT(rhsType, lhsType) && (neqT(rhsType, NoneT) || !canAssignNone(lhsType))) {
 	const errMsg = `${tr(rhsType)} value assigned to '${stmt.name}' which is of type ${tr(lhsType)}`;
 	typeError(stmt.pos, errMsg, source);
+      }
+
+      if (eqT(lhsType, NoneT)) {
+	typeError(stmt.pos, `Variable cannot be of type None`, source);
       }
 
       env[stmt.name.str] = stmt.staticType;
@@ -164,8 +167,6 @@ export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
 }
 
 export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvType>{}, classEnv: Type = undefined): Type {
-  console.log("Typechecking expression:");
-  console.log(expr);
   switch(expr.tag) {
     case "self":
       if (classEnv == undefined) {
@@ -203,8 +204,6 @@ export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: 
 	    internalError();
 	  } else {
 	    const memFunRef = classRef.memberFuncs.get(memberFunName);
-	    console.log("Searching in class REf:");
-	    console.log(classRef);
 	    if (memFunRef == undefined) {
 	      scopeError(callExpr.member.pos, `Function ${memberFunName}() is not a member of class ${firstPart.name}.`, source);
 	    } else {
@@ -267,10 +266,12 @@ export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: 
   }
 }
 
-export function typecheck(ast : Array<Stmt>, source: string, env: GlobalEnv) : String {
+export function typecheck(ast : Array<Stmt>, source: string, env: GlobalEnv) : Type {
+  var result: Type = undefined;
+  
   ast.forEach(stmt => {
-    const staticType = tc_stmt(stmt, source, env);
+    result = tc_stmt(stmt, source, env);
   });
 
-  return "Done";
+  return result;
 }
