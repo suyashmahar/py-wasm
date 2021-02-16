@@ -130,8 +130,6 @@ export function tc_func(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
     stmt.content.body.forEach(s => {
       tc_stmt(s, source, gblEnv, funEnv, classEnv);
       if (s.tag == "return") {
-	console.log("Got classEnv:");
-	console.log(classEnv);
 	const retType = tc_expr(s.expr, source, gblEnv, funEnv, classEnv);
 	if (neqT(retType, stmt.content.ret) && (neqT(retType, NoneT) || !canAssignNone(stmt.content.ret))) {
 	  const throwMsg = `Return's type ${tr(retType)} and function's return type ${tr(stmt.content.ret)} don't match`;
@@ -183,6 +181,20 @@ export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
 	if (neqT(assignLhsType, assignRhsType) && (neqT(assignRhsType, NoneT) || !canAssignNone(assignLhsType))) {
 	  const errMsg = `Value of type ${tr(assignRhsType)} to '${stmt.lhs.name}' which is of type ${tr(assignLhsType)}`;
 	  typeError(stmt.pos, errMsg, source);
+	}
+      } else if (stmt.lhs.tag == "memExp") {
+	const exprT = tc_expr(stmt.lhs.expr, source, gblEnv, funEnv, classEnv);
+	if (exprT.tag == "class") {
+	  const classRef: ClassEnv = gblEnv.classes.get(exprT.name);
+	  const memRef = classRef.memberVars.get(stmt.lhs.member.str);
+
+	  console.log(`Checking for member ${stmt.lhs.member.str} in class ${exprT.name}`);
+	  
+	  if (memRef == undefined) {
+	    scopeError(stmt.lhs.member.pos, `${stmt.lhs.member.str} is not a member of type ${exprT.name}`, source);
+	  }
+	} else {
+	  typeError(stmt.lhs.pos, `Member expression (${stmt.lhs.member.str}) on a non-object type (${tr(exprT)}).`, source);
 	}
       }
       return NoneT;
@@ -242,8 +254,15 @@ export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: 
       if (exprT.tag != "class") {
 	typeError(expr.expr.pos, `Expression is not of type ${tr(exprT)}, and not of type class`, source);
       } else {
+	// TODO: Check if the member exists
 	const classRef: ClassEnv = gblEnv.classes.get(exprT.name);
-	return classRef.memberVars.get(expr.member.str)[1];
+	const memRef = classRef.memberVars.get(expr.member.str);
+	
+	if (memRef == undefined) {
+	  scopeError(expr.member.pos, `${expr.member.str} is not a member of type ${exprT.name}`, source);
+	} else {
+	  return memRef[1];
+	}
       }
     case "self":
       if (classEnv == undefined) {
