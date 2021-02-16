@@ -9,7 +9,8 @@ export type EnvType = Record<string, Type>;
 export var env : EnvType = {};
 
 
-export function tc_binExp(pos: Pos, op : string, leftType : Type, rightType : Type, source: string) : Type {
+export function
+tc_binExp(pos: Pos, op : string, leftType : Type, rightType : Type, source: string) : Type {
   switch (op) {
     case "-":
     case "+":
@@ -17,7 +18,8 @@ export function tc_binExp(pos: Pos, op : string, leftType : Type, rightType : Ty
     case "%":
     case "//":
       if (leftType != IntT || rightType != IntT) {
-	const errMsg = `Operator ${op} expects both args to be int, got ${tr(leftType)} and ${tr(rightType)}`;
+	const errMsg = `Operator ${op} expects both args to be int, got ${tr(leftType)} `
+	  + `and ${tr(rightType)}`;
 	typeError(pos, errMsg, source);
       }
       return IntT;
@@ -28,18 +30,21 @@ export function tc_binExp(pos: Pos, op : string, leftType : Type, rightType : Ty
     case "==":
     case "!=":
       if (leftType != rightType) {
-	typeError(pos, `Operator ${op} on types that are neither both int nor bool (${tr(leftType)} and ${tr(rightType)})`, source);
+	typeError(pos, `Operator ${op} on types that are neither both int nor bool (${tr(leftType)}`
+	  + ` and ${tr(rightType)})`, source);
       }
       return BoolT;
     case "is":
       if (!canAssignNone(leftType) || neqT(rightType, NoneT)) {
-	typeError(pos, `Operator \`is\` used on non-None types, ${tr(leftType)} and ${tr(rightType)}`, source);
+	typeError(pos, `Operator \`is\` used on non-None types, ${tr(leftType)} and ${tr(rightType)}`,
+		  source);
       }
       return BoolT;
     case "and":
     case "or":
       if (leftType != BoolT || rightType != BoolT) {
-	typeError(pos, `Operator ${op} used on non-bool types, ${tr(leftType)} and ${tr(rightType)}`, source);
+	typeError(pos, `Operator ${op} used on non-bool types, ${tr(leftType)} and ${tr(rightType)}`,
+		  source);
       }
       return BoolT;
     default:
@@ -47,7 +52,8 @@ export function tc_binExp(pos: Pos, op : string, leftType : Type, rightType : Ty
   }
 }
 
-export function tc_uExp(pos: Pos, op: string, exprType: Type, source: string) {
+export function
+tc_uExp(pos: Pos, op: string, exprType: Type, source: string) {
   switch (op) {
     case "-":
       if (exprType != IntT) {
@@ -62,7 +68,8 @@ export function tc_uExp(pos: Pos, op: string, exprType: Type, source: string) {
   }
 }
 
-export function tc_class(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvType>{}) : Type {
+export function
+tc_class(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvType>{}) : Type {
   if (stmt.tag == "class") {
     const classEnv: Type = {tag: "class", name: stmt.name.str};
 
@@ -75,7 +82,8 @@ export function tc_class(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: 
 	const lhsT = ivar.staticType;
 	const rhsT = tc_expr(ivar.value, source, gblEnv, funEnv, classEnv);
 	if (neqT(lhsT, rhsT) && (neqT(rhsT, NoneT) || !canAssignNone(lhsT))) {
-	  typeError(ivar.pos, `Cannot assign value of type ${rhsT} to ${ivar.name} which is of type ${lhsT}.`, source);
+	  typeError(ivar.pos, `Cannot assign value of type ${rhsT} to ${ivar.name} which is of type `
+	    + `${lhsT}.`, source);
 	}
 
 	if (ivar.staticType == NoneT) {
@@ -101,7 +109,8 @@ export function tc_class(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: 
       /* Check for duplicate functions */
       const prevPos = nameMap[f.name.str];
       if (prevPos != undefined) {
-	scopeError(f.name.pos, `Function redefined in the same class, first defined at Line ${prevPos.line}`, source);
+	scopeError(f.name.pos, `Function redefined in the same class, first defined at `
+	  + `Line ${prevPos.line}`, source);
       }
       nameMap[f.name.str] = f.name.pos;
       
@@ -117,7 +126,9 @@ export function tc_class(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: 
   }
 }
 
-export function tc_func(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvType>{}, classEnv: Type = undefined) : Type {
+export function
+tc_func(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvType>{},
+	classEnv: Type = undefined) : Type {
   if (stmt.tag == "func") {
     stmt.content.body.forEach(s => {
       if (s.tag == "define") {
@@ -131,8 +142,10 @@ export function tc_func(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
       tc_stmt(s, source, gblEnv, funEnv, classEnv);
       if (s.tag == "return") {
 	const retType = tc_expr(s.expr, source, gblEnv, funEnv, classEnv);
-	if (neqT(retType, stmt.content.ret) && (neqT(retType, NoneT) || !canAssignNone(stmt.content.ret))) {
-	  const throwMsg = `Return's type ${tr(retType)} and function's return type ${tr(stmt.content.ret)} don't match`;
+	if (neqT(retType, stmt.content.ret)
+	    && (neqT(retType, NoneT) || !canAssignNone(stmt.content.ret))) {
+	  const throwMsg = `Return's type ${tr(retType)} and function's return type `
+	    + `${tr(stmt.content.ret)} don't match`;
 	  typeError(s.pos, throwMsg, source);
 	}
       }
@@ -144,7 +157,9 @@ export function tc_func(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
   }
 }
 
-export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvType>{}, classEnv: Type = undefined) : Type {
+export function
+tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvType>{},
+	classEnv: Type = undefined) : Type {
   switch (stmt.tag) {
     case "class":
       return tc_class(stmt, source, gblEnv, funEnv);
@@ -157,7 +172,8 @@ export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
       const lhsType = stmt.staticType;
 
       if (neqT(rhsType, lhsType) && (neqT(rhsType, NoneT) || !canAssignNone(lhsType))) {
-	const errMsg = `${tr(rhsType)} value assigned to '${stmt.name}' which is of type ${tr(lhsType)}`;
+	const errMsg = `${tr(rhsType)} value assigned to '${stmt.name}' which is of `
+	  + `type ${tr(lhsType)}`;
 	typeError(stmt.pos, errMsg, source);
       }
 
@@ -172,14 +188,17 @@ export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
       const assignRhsType = tc_expr(stmt.value, source, gblEnv, funEnv, classEnv);
       if (stmt.lhs.tag == "id") {
 	if (env[stmt.lhs.name] == undefined) {
-	  symLookupError(stmt.lhs.pos, `Cannot find value '${stmt.lhs.name}' in current scope`, source);
+	  symLookupError(stmt.lhs.pos, `Cannot find value '${stmt.lhs.name}' in current scope`,
+			 source);
 	}
 	const assignLhsPos: Pos = stmt.lhs.pos;
 	const assignLhsExpr: Expr = { tag: "id", pos: assignLhsPos, name: stmt.lhs.name };
 	const assignLhsType = tc_expr(assignLhsExpr, source, gblEnv, funEnv, classEnv);
 	
-	if (neqT(assignLhsType, assignRhsType) && (neqT(assignRhsType, NoneT) || !canAssignNone(assignLhsType))) {
-	  const errMsg = `Value of type ${tr(assignRhsType)} to '${stmt.lhs.name}' which is of type ${tr(assignLhsType)}`;
+	if (neqT(assignLhsType, assignRhsType)
+	    && (neqT(assignRhsType, NoneT) || !canAssignNone(assignLhsType))) {
+	  const errMsg = `Value of type ${tr(assignRhsType)} to '${stmt.lhs.name}' which is of `
+	    + `type ${tr(assignLhsType)}`;
 	  typeError(stmt.pos, errMsg, source);
 	}
       } else if (stmt.lhs.tag == "memExp") {
@@ -191,10 +210,12 @@ export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
 	  console.log(`Checking for member ${stmt.lhs.member.str} in class ${exprT.name}`);
 	  
 	  if (memRef == undefined) {
-	    scopeError(stmt.lhs.member.pos, `${stmt.lhs.member.str} is not a member of type ${exprT.name}`, source);
+	    scopeError(stmt.lhs.member.pos, `${stmt.lhs.member.str} is not a member of `
+	      + `type ${exprT.name}`, source);
 	  }
 	} else {
-	  typeError(stmt.lhs.pos, `Member expression (${stmt.lhs.member.str}) on a non-object type (${tr(exprT)}).`, source);
+	  typeError(stmt.lhs.pos, `Member expression (${stmt.lhs.member.str}) on a non-object `
+	    + `type (${tr(exprT)}).`, source);
 	}
       }
       return NoneT;
@@ -202,7 +223,8 @@ export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
       const whileCondType = tc_expr(stmt.cond, source, gblEnv, funEnv, classEnv);
 
       if (neqT(whileCondType, BoolT)) {
-	typeError(stmt.cond.pos, `While condition expected a bool, found ${tr(whileCondType)}.`, source);
+	typeError(stmt.cond.pos, `While condition expected a bool, found ${tr(whileCondType)}.`,
+		  source);
       }
 
       // Check the body
@@ -247,19 +269,23 @@ export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
   }
 }
 
-export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvType>{}, classEnv: Type = undefined): Type {
+export function
+tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvType>{},
+	classEnv: Type = undefined): Type {
   switch(expr.tag) {
     case "memExp":
       const exprT = tc_expr(expr.expr, source, gblEnv, funEnv, classEnv);
       if (exprT.tag != "class") {
-	typeError(expr.expr.pos, `Expression is not of type ${tr(exprT)}, and not of type class`, source);
+	typeError(expr.expr.pos, `Expression is not of type ${tr(exprT)}, and not of type class`,
+		  source);
       } else {
 	// TODO: Check if the member exists
 	const classRef: ClassEnv = gblEnv.classes.get(exprT.name);
 	const memRef = classRef.memberVars.get(expr.member.str);
 	
 	if (memRef == undefined) {
-	  scopeError(expr.member.pos, `${expr.member.str} is not a member of type ${exprT.name}`, source);
+	  scopeError(expr.member.pos, `${expr.member.str} is not a member of type ${exprT.name}`,
+		     source);
 	} else {
 	  return memRef[1];
 	}
@@ -307,7 +333,8 @@ export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: 
 	  } else {
 	    const memFunRef = classRef.memberFuncs.get(memberFunName);
 	    if (memFunRef == undefined) {
-	      scopeError(callExpr.member.pos, `Function ${memberFunName}() is not a member of class ${firstPart.name}.`, source);
+	      scopeError(callExpr.member.pos, `Function ${memberFunName}() is not a member of `
+		+ `class ${firstPart.name}.`, source);
 	    } else {
 	      retType = memFunRef.retType;
 
@@ -316,7 +343,8 @@ export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: 
 	      const gotArgCnt = expr.args.length;
 
 	      if (expectedArgCnt != gotArgCnt) {
-		argError(expr.prmPos, `Expected ${expectedArgCnt}, got ${gotArgCnt} arguments.`, source);
+		argError(expr.prmPos, `Expected ${expectedArgCnt}, got ${gotArgCnt} arguments.`,
+			 source);
 	      }
 
 	      /* Typecheck argument's type */
@@ -326,7 +354,9 @@ export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: 
 		  const expArgType = memFunRef.members[prmIter];
 		  const gotArgType = tc_expr(arg, source, gblEnv, funEnv, classEnv);
 		  if (neqT(expArgType, gotArgType)) {
-		    typeError(arg.pos, `Function ${firstPart.name}.${memberFunName}() expects its argument at pos ${prmIter} to be of type ${tr(expArgType)}, got ${tr(gotArgType)}.`, source);
+		    typeError(arg.pos, `Function ${firstPart.name}.${memberFunName}() expects its `
+		      +`argument at pos ${prmIter} to be of type ${tr(expArgType)}, `
+		      +`got ${tr(gotArgType)}.`, source);
 		  }
 		}
 		prmIter += 1;
@@ -334,7 +364,8 @@ export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: 
 	    }
 	  }
 	} else {
-	  typeError(callExpr.pos, `Cannot use dot access using function with expression of type ${callExpr.tag}`, source);
+	  typeError(callExpr.pos, `Cannot use dot access using function with expression of `
+	    +`type ${callExpr.tag}`, source);
 	}
       } else if (callExpr.tag == "id") {
 	const callName = callExpr.name;
@@ -345,7 +376,8 @@ export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: 
 	  const argsProvided = expr.args.length;
 
 	  if (argsExpected != argsProvided) {
-	    argError(expr.prmPos, `${expr.name}() needs ${argsExpected} arguments, ${argsProvided} provided`, source);
+	    argError(expr.prmPos, `${expr.name}() needs ${argsExpected} arguments, `
+	      +`${argsProvided} provided`, source);
 	  }
 
 	  /* Only check if this function is not print() */
@@ -356,7 +388,8 @@ export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: 
 	      const argTypeExpected = gblEnv.funcs.get(callName).members[argIter];
 
 	      if (neqT(argTypeProvided, argTypeExpected)) {
-		typeError(expr.prmsPosArr[argIter], `Argument ${argIter} is of type ${tr(argTypeExpected)}, ${tr(argTypeProvided)} provided`, source);
+		typeError(expr.prmsPosArr[argIter], `Argument ${argIter} is of type `
+			  +`${tr(argTypeExpected)}, ${tr(argTypeProvided)} provided`, source);
 	      }
 	      
 	      argIter += 1;
@@ -366,7 +399,8 @@ export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: 
 	} else if (gblEnv.classes.get(callName) != undefined) { /* Constructor */
 	  const argsProvided = expr.args.length;
 	  if (argsProvided != 0) {
-	    argError(expr.prmPos, `Constructor for classes take exactly 0 arguments, ${argsProvided} provided`, source);
+	    argError(expr.prmPos, `Constructor for classes take exactly 0 arguments, `
+	      +`${argsProvided} provided`, source);
 	  }
 	  retType = { tag: "class", name: callName }; // Call name is same as the class name
 	} else {
@@ -388,7 +422,8 @@ export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: 
   }
 }
 
-export function typecheck(ast : Array<Stmt>, source: string, env: GlobalEnv) : Type {
+export function
+typecheck(ast : Array<Stmt>, source: string, env: GlobalEnv) : Type {
   var result: Type = undefined;
   
   ast.forEach(stmt => {
