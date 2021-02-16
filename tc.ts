@@ -138,6 +138,8 @@ tc_func(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvTyp
     
     stmt.content.parameters.forEach(param => { funEnv[param.name] = param.type; });
 
+    // TODO: Add support for checking for return statements in all the possible paths
+    
     stmt.content.body.forEach(s => {
       tc_stmt(s, source, gblEnv, funEnv, classEnv);
       if (s.tag == "return") {
