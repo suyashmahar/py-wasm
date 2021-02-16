@@ -230,7 +230,7 @@ export function traverseClass(c: TreeCursor, s: string): Stmt {
 	funcs.push(bStmt.content);
 	break;
       default:
-	err.scopeError({line: 0, col: 0, len: 0}, `Can't have ${bStmt.tag} in a class defintion.`, s);
+	// err.scopeError({line: 0, col: 0, len: 0}, `Can't have ${bStmt.tag} in a class defintion.`, s);
 	break;
     }
   });

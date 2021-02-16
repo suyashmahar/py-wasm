@@ -151,11 +151,11 @@ export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
     case "class":
       return tc_class(stmt, source, gblEnv, funEnv);
     case "expr":
-      return tc_expr(stmt.expr, source, gblEnv, funEnv);
+      return tc_expr(stmt.expr, source, gblEnv, funEnv, classEnv);
     case "pass":
       return NoneT;
     case "define":
-      const rhsType = tc_expr(stmt.value, source, gblEnv, funEnv);
+      const rhsType = tc_expr(stmt.value, source, gblEnv, funEnv, classEnv);
       const lhsType = stmt.staticType;
 
       if (neqT(rhsType, lhsType) && (neqT(rhsType, NoneT) || !canAssignNone(lhsType))) {
@@ -171,14 +171,14 @@ export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
       
       return stmt.staticType;
     case "assign":
-      const assignRhsType = tc_expr(stmt.value, source, gblEnv, funEnv);
+      const assignRhsType = tc_expr(stmt.value, source, gblEnv, funEnv, classEnv);
       if (stmt.lhs.tag == "id") {
 	if (env[stmt.lhs.name] == undefined) {
 	  symLookupError(stmt.lhs.pos, `Cannot find value '${stmt.lhs.name}' in current scope`, source);
 	}
 	const assignLhsPos: Pos = stmt.lhs.pos;
 	const assignLhsExpr: Expr = { tag: "id", pos: assignLhsPos, name: stmt.lhs.name };
-	const assignLhsType = tc_expr(assignLhsExpr, source, gblEnv, funEnv);
+	const assignLhsType = tc_expr(assignLhsExpr, source, gblEnv, funEnv, classEnv);
 	
 	if (neqT(assignLhsType, assignRhsType) && (neqT(assignRhsType, NoneT) || !canAssignNone(assignLhsType))) {
 	  const errMsg = `Value of type ${tr(assignRhsType)} to '${stmt.lhs.name}' which is of type ${tr(assignLhsType)}`;
@@ -187,7 +187,7 @@ export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
       }
       return NoneT;
     case "while":
-      const whileCondType = tc_expr(stmt.cond, source, gblEnv, funEnv);
+      const whileCondType = tc_expr(stmt.cond, source, gblEnv, funEnv, classEnv);
 
       if (neqT(whileCondType, BoolT)) {
 	typeError(stmt.cond.pos, `While condition expected a bool, found ${tr(whileCondType)}.`, source);
@@ -195,30 +195,30 @@ export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
 
       // Check the body
       stmt.whileBody.forEach(s => {
-	tc_stmt(s, source, gblEnv, funEnv);
+	tc_stmt(s, source, gblEnv, funEnv, classEnv);
       });
       
       return NoneT;
     case "if":
-      const condType = tc_expr(stmt.cond, source, gblEnv, funEnv);
+      const condType = tc_expr(stmt.cond, source, gblEnv, funEnv, classEnv);
 
       if (stmt.branches != []) {
 	stmt.branches.forEach(branch => {
-	  const condType = tc_expr(branch.cond, source, gblEnv, funEnv);
+	  const condType = tc_expr(branch.cond, source, gblEnv, funEnv, classEnv);
 	  if (condType != BoolT) {
 	    typeError(stmt.condPos, `If condition expected bool but got ${tr(condType)}`, source);
 	  }
 	  
-	  branch.body.forEach(s => { tc_stmt(s, source, gblEnv, funEnv); });
+	  branch.body.forEach(s => { tc_stmt(s, source, gblEnv, funEnv, classEnv); });
 	});
       }
 
       if (stmt.elseBody != []) {
-	stmt.elseBody.forEach(s => { tc_stmt(s, source, gblEnv, funEnv); });
+	stmt.elseBody.forEach(s => { tc_stmt(s, source, gblEnv, funEnv, classEnv); });
       }
 
       if (stmt.ifBody != []) {
-	stmt.ifBody.forEach(s => { tc_stmt(s, source, gblEnv, funEnv); });
+	stmt.ifBody.forEach(s => { tc_stmt(s, source, gblEnv, funEnv, classEnv); });
       }
 
       if (condType != BoolT) {
@@ -263,9 +263,15 @@ export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: 
     case "id":
       if (funEnv[expr.name] != undefined) {
 	return funEnv[expr.name];
-      } else {
+      } else if (env[expr.name] != undefined) {
 	return env[expr.name];
+      } else {
+	if (classEnv.tag == "class") {
+	  const classRef: ClassEnv = gblEnv.classes.get(classEnv.name);
+	  return classRef.memberVars.get(expr.name)[1];
+	}
       }
+      break;
 
     case "funcCall":
       const callExpr = expr.name;
@@ -327,7 +333,7 @@ export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: 
 	  if (callName != "print") {
 	    var argIter = 0;
 	    expr.args.forEach(arg => {
-	      const argTypeProvided = tc_expr(arg, source, gblEnv, funEnv);
+	      const argTypeProvided = tc_expr(arg, source, gblEnv, funEnv, classEnv);
 	      const argTypeExpected = gblEnv.funcs.get(callName).members[argIter];
 
 	      if (neqT(argTypeProvided, argTypeExpected)) {
@@ -352,12 +358,12 @@ export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: 
       return retType;
       
     case "unaryExp":
-      tc_uExp(expr.pos, expr.name, tc_expr(expr.arg, source, gblEnv, funEnv), source);
-      return tc_expr(expr.arg, source, gblEnv, funEnv);
+      tc_uExp(expr.pos, expr.name, tc_expr(expr.arg, source, gblEnv, funEnv, classEnv), source);
+      return tc_expr(expr.arg, source, gblEnv, funEnv, classEnv);
       
     case "binExp":
-      const leftType = tc_expr(expr.arg[0], source, gblEnv, funEnv);
-      const rightType = tc_expr(expr.arg[1], source, gblEnv, funEnv);
+      const leftType = tc_expr(expr.arg[0], source, gblEnv, funEnv, classEnv);
+      const rightType = tc_expr(expr.arg[1], source, gblEnv, funEnv, classEnv);
       const op = expr.name;
       return tc_binExp(expr.pos, op, leftType, rightType, source);
   }

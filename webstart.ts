@@ -169,6 +169,7 @@ pass
 	    return NONE_BI;
 	  } else if (res.tag == "none") {
 	    this.print_none(undefined);
+	    return NONE_BI;
 	  } else {
 	    this.print({tag: res.tag} , undefined);
 	    return NONE_BI;
@@ -190,10 +191,12 @@ pass
           document.getElementById("output").appendChild(elt);
           elt.innerText = arg;
         },
-	print: (typ: Type, arg : any) => {
+	print: (typ: Type, arg : any): any => {
           const elt = document.createElement("pre");
           document.getElementById("output").appendChild(elt);
           elt.innerText = stringify(typ, arg);
+
+	  return NONE_BI;
         },
 
         print_global_func: (pos: number, value: number) => {
