@@ -32,7 +32,7 @@ export function tc_binExp(pos: Pos, op : string, leftType : Type, rightType : Ty
       }
       return BoolT;
     case "is":
-      if (leftType != NoneT || rightType != NoneT) {
+      if (!canAssignNone(leftType) || neqT(rightType, NoneT)) {
 	typeError(pos, `Operator \`is\` used on non-None types, ${tr(leftType)} and ${tr(rightType)}`, source);
       }
       return BoolT;
@@ -64,9 +64,26 @@ export function tc_uExp(pos: Pos, op: string, exprType: Type, source: string) {
 
 export function tc_class(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvType>{}) : Type {
   if (stmt.tag == "class") {
+    const classEnv: Type = {tag: "class", name: stmt.name.str};
 
     var foundCtor = false;
     var nameMap: Record<string, Pos> = {}
+
+    /* Type check variable declarations */
+    stmt.body.iVars.forEach(ivar => {
+      if (ivar.tag == "define") {
+	const lhsT = ivar.staticType;
+	const rhsT = tc_expr(ivar.value, source, gblEnv, funEnv, classEnv);
+	if (neqT(lhsT, rhsT) && (neqT(rhsT, NoneT) || !canAssignNone(lhsT))) {
+	  typeError(ivar.pos, `Cannot assign value of type ${rhsT} to ${ivar.name} which is of type ${lhsT}.`, source);
+	}
+
+	if (ivar.staticType == NoneT) {
+	  typeError(ivar.pos, `Variable cannot be of type ${tr(ivar.staticType)}.`, source);
+	}
+	
+      }
+    });
     
     stmt.body.funcs.forEach(f => {
       if (f.name.str == '__init__') { /* Constructor for the class */
@@ -90,7 +107,7 @@ export function tc_class(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: 
       
       /* Typecheck function's content */
       const fStmt: Stmt = {tag: "func", content: f};
-      tc_func(fStmt, source, gblEnv, funEnv);
+      tc_func(fStmt, source, gblEnv, funEnv, classEnv);
     });
 
     
@@ -100,7 +117,7 @@ export function tc_class(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: 
   }
 }
 
-export function tc_func(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvType>{}) : Type {
+export function tc_func(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvType>{}, classEnv: Type = undefined) : Type {
   if (stmt.tag == "func") {
     stmt.content.body.forEach(s => {
       if (s.tag == "define") {
@@ -111,10 +128,12 @@ export function tc_func(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
     stmt.content.parameters.forEach(param => { funEnv[param.name] = param.type; });
 
     stmt.content.body.forEach(s => {
-      tc_stmt(s, source, gblEnv, funEnv);
+      tc_stmt(s, source, gblEnv, funEnv, classEnv);
       if (s.tag == "return") {
-	const retType = tc_expr(s.expr, source, gblEnv, funEnv);
-	if (retType != stmt.content.ret) {
+	console.log("Got classEnv:");
+	console.log(classEnv);
+	const retType = tc_expr(s.expr, source, gblEnv, funEnv, classEnv);
+	if (neqT(retType, stmt.content.ret) && (neqT(retType, NoneT) || !canAssignNone(stmt.content.ret))) {
 	  const throwMsg = `Return's type ${tr(retType)} and function's return type ${tr(stmt.content.ret)} don't match`;
 	  typeError(s.pos, throwMsg, source);
 	}
@@ -127,7 +146,7 @@ export function tc_func(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
   }
 }
 
-export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvType>{}) : Type {
+export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvType>{}, classEnv: Type = undefined) : Type {
   switch (stmt.tag) {
     case "class":
       return tc_class(stmt, source, gblEnv, funEnv);
@@ -161,7 +180,7 @@ export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
 	const assignLhsExpr: Expr = { tag: "id", pos: assignLhsPos, name: stmt.lhs.name };
 	const assignLhsType = tc_expr(assignLhsExpr, source, gblEnv, funEnv);
 	
-	if (neqT(assignLhsType, assignRhsType)) {
+	if (neqT(assignLhsType, assignRhsType) && (neqT(assignRhsType, NoneT) || !canAssignNone(assignLhsType))) {
 	  const errMsg = `Value of type ${tr(assignRhsType)} to '${stmt.lhs.name}' which is of type ${tr(assignLhsType)}`;
 	  typeError(stmt.pos, errMsg, source);
 	}
@@ -208,11 +227,11 @@ export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
 
       return NoneT;
     case "return":
-      const retType = tc_expr(stmt.expr, source, gblEnv, funEnv);
+      const retType = tc_expr(stmt.expr, source, gblEnv, funEnv, classEnv);
 
       return retType;
     case "func":
-      return tc_func(stmt, source, gblEnv, funEnv);
+      return tc_func(stmt, source, gblEnv, funEnv, classEnv);
   }
 }
 

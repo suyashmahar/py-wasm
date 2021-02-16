@@ -200,7 +200,15 @@ pass
           var name = importObject.nameMap[pos];
           var msg = name + " = " + value;
           renderResult(msg);
-        }
+        },
+	
+	assert_non_none: (arg: any) : any => {
+	  const res = i64ToValue(arg, this.importObject.tableOffset);
+	  if (res.tag == "none") {
+	    throw new Error("Operation on None");
+	  }
+	  return arg;
+	}
 
       },
       nameMap: new Array<string>(),

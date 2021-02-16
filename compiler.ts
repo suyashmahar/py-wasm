@@ -15,6 +15,10 @@ import * as cmn from "./common";
 // Store all the functions separately
 export var funcs : Array<Array<string>> = [];
 
+export function reset() {
+  funcs = [];
+}
+
 export const emptyEnv = {
   globals: new Map(),
   classes: new Map(),
@@ -231,16 +235,43 @@ function codeGenRet(stmt : Stmt, env : envM.GlobalEnv, localParams: Array<Parame
 
 function codeGenClass(stmt: Stmt, env : envM.GlobalEnv, source: string, classT: Type = undefined) : Array<string> {
   if (stmt.tag == "class") {
+    var foundCtor = false;
     stmt.body.funcs.forEach(fun => {
       const funStmt: Stmt = {
 	tag: "func",
 	content: fun
       };
-      const resultType = fun.name.str == "__init__" ? "" : "(result i64)";
+
+      const isCtor = fun.name.str == "__init__";
+      if (isCtor) {
+	foundCtor = true;
+      }
+      
+      const resultType = isCtor ? "" : "(result i64)";
       
       codeGenFunc(funStmt, env, source, `$${stmt.name.str}`,
 		  resultType, classT={tag: "class", name: stmt.name.str});
     });
+
+    if (!foundCtor) {
+      const funStmt: Stmt = {
+	tag: "func",
+	content: {
+	  pos: err.dummyPos,
+	  name: {str: "__init__", pos: err.dummyPos},
+	  parametersPos: err.dummyPos,
+	  parameters: [{tag: "parameter", name: "self", type: {tag: "class", name: stmt.name.str}}],
+	  ret: NoneT,
+	  retPos: err.dummyPos,
+	  body: []	  
+	}
+      };
+      
+      codeGenFunc(funStmt, env, source, `$${stmt.name.str}`,
+		  "", classT={tag: "class", name: stmt.name.str});
+      
+    }
+    
   } else {
     err.internalError();
   }
@@ -281,7 +312,8 @@ function codeGenMemberExpr(expr: Expr, env: envM.GlobalEnv, source: string, loca
     /* Add the field offset */
     var result = codeGenExpr(varExpr, env, localParams, source, classT);
 
-    result = result.concat([`(i64.const ${getFieldOffset(className, memName, env)}) ;; Offset for field ${memName}`,
+    result = result.concat([`(call $runtime_check$assert_non_none) ;; Check for None `,
+			    `(i64.const ${getFieldOffset(className, memName, env)}) ;; Offset for field ${memName}`,
 			    `(i64.add)`,
 			    `(i32.wrap/i64)`,
 			    `(i64.load) ;;  Load ${className}.${memName}`]);
@@ -533,6 +565,8 @@ export function codeGenExpr(expr : Expr, env : envM.GlobalEnv, localParams : Arr
 	    prmsPosArr: expr.prmsPosArr,
 	    args: expr.args
 	  }
+	  
+	  result.push(`(call $runtime_check$assert_non_none)`);
 	  result.push(`(i64.const ${cmn.PTR_VAL})`);
 	  result.push(`(i64.sub)`);
 	  return result.concat(codeGenFuncCall(fCallAug, env, localParams, source, classT));

@@ -5,6 +5,7 @@ import { typecheck_ } from "./compiler";
 import { GlobalEnv } from "./env";
 import { Value, Type, BoolT, IntT, NoneT } from "./ast";
 import { valueToStr, i64ToValue, NONE_BI } from "./common";
+import * as compiler from './compiler';
 
 interface REPL {
   run(source : string) : Promise<any>;
@@ -15,6 +16,9 @@ export class BasicREPL {
   importObject: any
   memory: any
   constructor(importObject : any) {
+    console.log("Constructing new object");
+
+    compiler.reset();
     this.importObject = importObject;
     this.importObject.nameMap = new Array<string>();
     this.importObject.tableOffset = new Map<number, string>();
@@ -54,6 +58,14 @@ export class BasicREPL {
       const classObj: Value = {tag: "object", name: importObject.tableOffset.get(Number(classId)), address: arg};
       
       return importObject.imports.print({tag: "class", name: classObj.name}, undefined);
+    };
+    
+    this.importObject.imports.assert_non_none = (arg : any): any => {
+      const res = i64ToValue(arg, this.importObject.tableOffset);
+      if (res.tag == "none") {
+	throw new Error("Operation on None");
+      }
+      return arg;      
     };
     
     

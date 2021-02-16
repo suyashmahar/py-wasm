@@ -11,7 +11,7 @@ export function padNum(num: number, width: number): string {
 export function getDecorator(pos: Pos, source: string): string {
   const splitSource = source.split("\n");
   var errLinesArr = [padNum(pos.line-1, 4) + "| " + splitSource[pos.line-2],
-		       padNum(pos.line, 4) + "| " + splitSource[pos.line-1]];
+		     padNum(pos.line, 4) + "| " + splitSource[pos.line-1]];
 
   if (pos.line == 1) {
     errLinesArr = [errLinesArr[1]];
@@ -28,7 +28,7 @@ export function genericError(errType: string, pos: Pos, msg: string, source: str
   const errTxt = `${errType}: ${msg}`
   
   const text: string = [getDecorator(pos, source), errTxt].join('\n');
-  throw text;
+  throw new Error(text);
 }
 
 export const typeError = (pos: Pos, msg: string, source: string): never => genericError('TypeError', pos, msg, source);
@@ -39,7 +39,7 @@ export const valError = (pos: Pos, msg: string, source: string): never => generi
 
 export const parseError = (pos: Pos, msg: string, source: string): never => genericError('ParseError', pos, msg, source);
 export function internalError(): never {
-    const errTxt = `CompilerError: An internal function ran into an invalid state. Please report this bug to the compiler devs.`;
-    throw errTxt;
+  const errTxt = `CompilerError: An internal function ran into an invalid state. Please report this bug to the compiler devs.`;
+  throw new Error(errTxt);
 }
 
