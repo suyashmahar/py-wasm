@@ -69,12 +69,18 @@ export async function run(source : string, config: any) : Promise<[any, GlobalEn
 
   console.log("Generated WASM");
   console.log(lintWasmSource(wasmSource));
-  
-  const myModule = wabtInterface.parseWat("test.wat", wasmSource);
-  var asBinary = myModule.toBinary({});
-  var wasmModule = await WebAssembly.instantiate(asBinary.buffer, importObject);
-  const resultAny = (wasmModule.instance.exports.exported_func as any)();
-  var result: Value = i64ToValue(resultAny, importObject.tableOffset);
+
+  try {
+    const myModule = wabtInterface.parseWat("test.wat", wasmSource);
+    var asBinary = myModule.toBinary({});
+    var wasmModule = await WebAssembly.instantiate(asBinary.buffer, importObject);
+    const resultAny = (wasmModule.instance.exports.exported_func as any)();
+    var result: Value = i64ToValue(resultAny, importObject.tableOffset);
+  } catch (error) {
+    compiler.abort();
+    console.info("Wabt compilation/runtime error recorded");
+    throw error;
+  }
   
   return [result, compiled.newEnv];
 }

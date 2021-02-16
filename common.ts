@@ -44,7 +44,7 @@ export function i64ToValue(val: any, classMap: Map<number, string> = new Map()):
 	  break;
 	default:
 	  if (upper32 != BigInt(0) && (upper32 + BigInt(1)) != BigInt(0)) {
-	    valError(dummyPos, `Unknown value ${val}`, "");
+	    valError(dummyPos, `[PTR_BI = ${(PTR_BI>>BigInt(32)).toString(2)}] Unknown value ${val}, upper32: ${upper32.toString(2)}, lower32: ${lower32.toString(2)}`, "");
 	  }
 	  result = { tag: "num", value: Number(bigVal) };
 	  break;

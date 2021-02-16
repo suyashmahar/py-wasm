@@ -13,9 +13,14 @@ import * as cmn from "./common";
 // https://learnxinyminutes.com/docs/wasm/
 
 // Store all the functions separately
+export var prevFuncs: Array<Array<string>> = [];
 export var funcs : Array<Array<string>> = [];
 
 export function reset() {
+  funcs = [];
+}
+
+export function abort() {
   funcs = [];
 }
 
@@ -130,6 +135,8 @@ export function typecheck_(source: string, env: envM.GlobalEnv) : Type {
 }
 
 export function compile(source: string, env: envM.GlobalEnv) : CompileResult {
+  prevFuncs = funcs;
+  
   const ast = parse(source);
   const definedVars = new Set();
   ast.forEach(s => {
@@ -543,7 +550,9 @@ export function codeGenCtorCall(expr: Expr, env: envM.GlobalEnv, localParams: Ar
 export function codeGenExpr(expr : Expr, env : envM.GlobalEnv, localParams : Array<Parameter>, source: string, classT: Type = undefined) : Array<string> {
   switch(expr.tag) {
     case "self":
-      return [`(local.get $self)`];
+      return [`(i64.const ${cmn.PTR_VAL})`,
+	      `(local.get $self)`,
+	      `(i64.add)`];
     case "memExp":
       return codeGenMemberExpr(expr, env, source, localParams, classT);
     case "funcCall":

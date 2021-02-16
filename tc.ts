@@ -330,7 +330,7 @@ export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: 
 	      const argTypeProvided = tc_expr(arg, source, gblEnv, funEnv);
 	      const argTypeExpected = gblEnv.funcs.get(callName).members[argIter];
 
-	      if (argTypeProvided != argTypeExpected) {
+	      if (neqT(argTypeProvided, argTypeExpected)) {
 		typeError(expr.prmsPosArr[argIter], `Argument ${argIter} is of type ${tr(argTypeExpected)}, ${tr(argTypeProvided)} provided`, source);
 	      }
 	      
@@ -370,9 +370,5 @@ export function typecheck(ast : Array<Stmt>, source: string, env: GlobalEnv) : T
     result = tc_stmt(stmt, source, env);
   });
 
-  if (result == undefined) {
-    throw new Error(source);
-  }
-  
   return result;
 }
