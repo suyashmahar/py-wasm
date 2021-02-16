@@ -2,7 +2,7 @@
 
 import { internalError, typeError, symLookupError, argError, scopeError, parseError } from './error';
 import { GlobalEnv, ClassEnv, FuncEnv } from "./env";
-import { Type, Value, Expr, Stmt, Parameter, Pos, Branch, BoolT, IntT, NoneT } from "./ast";
+import { Type, Value, Expr, Stmt, Parameter, Pos, Branch, ClassT, BoolT, IntT, NoneT } from "./ast";
 import { tr, eqT, neqT, canAssignNone } from "./common"
 
 export type EnvType = Record<string, Type>;
@@ -237,6 +237,14 @@ export function tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: E
 
 export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvType>{}, classEnv: Type = undefined): Type {
   switch(expr.tag) {
+    case "memExp":
+      const exprT = tc_expr(expr.expr, source, gblEnv, funEnv, classEnv);
+      if (exprT.tag != "class") {
+	typeError(expr.expr.pos, `Expression is not of type ${tr(exprT)}, and not of type class`, source);
+      } else {
+	const classRef: ClassEnv = gblEnv.classes.get(exprT.name);
+	return classRef.memberVars.get(expr.member.str)[1];
+      }
     case "self":
       if (classEnv == undefined) {
 	scopeError(expr.pos, `Cannot use self keyword without a class`, source);
@@ -298,7 +306,6 @@ export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: 
 		}
 		prmIter += 1;
 	      });
-	      
 	    }
 	  }
 	} else {
@@ -342,7 +349,6 @@ export function tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: 
 	}
 	
       }
-      
       return retType;
       
     case "unaryExp":
@@ -364,5 +370,9 @@ export function typecheck(ast : Array<Stmt>, source: string, env: GlobalEnv) : T
     result = tc_stmt(stmt, source, env);
   });
 
+  if (result == undefined) {
+    throw new Error(source);
+  }
+  
   return result;
 }
