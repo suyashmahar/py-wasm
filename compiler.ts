@@ -13,8 +13,12 @@ import * as cmn from "./common";
 // https://learnxinyminutes.com/docs/wasm/
 
 // Store all the functions separately
+
 export var prevFuncs: Array<Array<string>> = [];
 export var funcs : Array<Array<string>> = [];
+
+var tempHeapPtr: number = 0;
+var tempStrAlloc : Map<string, number> = new Map();
 
 export function reset() {
   funcs = [];
@@ -24,8 +28,9 @@ export function abort() {
   funcs = [];
 }
 
-export const emptyEnv = {
+export const emptyEnv : envM.GlobalEnv = {
   globals: new Map(),
+  globalStrs: new Map(),
   classes: new Map(),
   funcs: new Map([['print', { name: "print", members: [NoneT], retType: IntT}],
 		 ]),
@@ -55,6 +60,7 @@ export function augmentEnv(env: envM.GlobalEnv, stmts: Array<Stmt>) : envM.Globa
   var newClassOff = env.classOffset;
   var newFuncs = new Map(env.funcs);
   var newClasses = new Map(env.classes);
+  var newGlobalStrs = new Map(env.globalStrs);
   
   stmts.forEach((s) => {
     switch(s.tag) {
@@ -116,8 +122,11 @@ export function augmentEnv(env: envM.GlobalEnv, stmts: Array<Stmt>) : envM.Globa
 	newClasses.set(s.name.str, classVal);
     }
   });
+
+  
   const result: envM.GlobalEnv = {
     globals: newEnv,
+    globalStrs: newGlobalStrs,
     classes: newClasses,
     offset: newOffset,
     classOffset: newClassOff,
@@ -148,6 +157,9 @@ export function compile(source: string, env: envM.GlobalEnv) : CompileResult {
   }); 
 
   const withDefines = augmentEnv(env, ast);
+
+  tempHeapPtr = withDefines.offset;
+  tempStrAlloc = new Map();
   
   const scratchVar : string = `(local $$last i64)
 (i32.const 0)
@@ -166,6 +178,11 @@ export function compile(source: string, env: envM.GlobalEnv) : CompileResult {
   var funcsStr = "";
   funcs.forEach(fun => {
     funcsStr = funcsStr.concat(fun.join("\n"))
+  });
+
+  /* Add the additional heap allocations for the strings */
+  tempStrAlloc.forEach((off, str) => {
+    withDefines.globalStrs.set(str, off);
   });
   
   return {
@@ -547,8 +564,29 @@ export function codeGenCtorCall(expr: Expr, env: envM.GlobalEnv, localParams: Ar
   } 
 }
 
+export function codeGenString(expr: Expr, env: envM.GlobalEnv, localParams : Array<Parameter>, source:string, classT: Type = undefined) : Array<string> {
+  if (expr.tag == "string") {
+    const str: string = expr.value;
+    const strLen: number = expr.value.length + 1; // Extra null character
+
+    var strPtr = tempHeapPtr;
+    if (tempStrAlloc.get(str) == undefined) {
+      tempStrAlloc.set(str, tempHeapPtr);
+      tempHeapPtr += strLen;
+    }
+    
+    return [
+      `(i64.const ${cmn.STR_BI + BigInt(strPtr)}) ;; `+
+	`Heap pointer for string '${str}' of length ${strLen}`];
+  } else {
+    err.internalError();
+  }
+}
+
 export function codeGenExpr(expr : Expr, env : envM.GlobalEnv, localParams : Array<Parameter>, source: string, classT: Type = undefined) : Array<string> {
   switch(expr.tag) {
+    case "string":
+      return codeGenString(expr, env, localParams, source, classT);
     case "self":
       return [`(i64.const ${cmn.PTR_VAL})`,
 	      `(local.get $self)`,

@@ -47,6 +47,8 @@ export class BasicREPL {
 	const val = res.value;
 	importObject.imports.print_num(val);
 	return NONE_BI;
+      } else if (res.tag == "string") {
+	return importObject.imports.print_str(res.off);
       } else if (res.tag == "none") {
 	importObject.imports.print_none(undefined);
       } else {
@@ -54,6 +56,34 @@ export class BasicREPL {
 	return NONE_BI;
       }
     };
+
+
+    this.importObject.imports.print_str = (off: number) => {
+      const memBuffer: ArrayBuffer = (importObject as any).js.memory.buffer;
+      const memUint8 = new Uint8Array(memBuffer);
+
+      console.log(`Printing string at offset ${off}`);
+      
+      var iter = off*8;
+      var str = "";
+      while (memUint8[iter] != 0) {
+	const nextChar = String.fromCharCode(memUint8[iter]);
+	console.log(`Reading from ${iter}`);
+	console.log(`nextChar: (ascii: ${memUint8[iter]})`);
+	console.log(nextChar);
+	str = str.concat(nextChar);
+	iter += 1;
+      }
+
+      console.log(`String: ${str}`);
+      
+      const elt = document.createElement("pre");
+      document.getElementById("output").appendChild(elt);
+      elt.innerText = str;
+
+      return NONE_BI;	  
+    },
+    
     this.importObject.imports.print_obj = (arg : any, classId: any) => {
       const classObj: Value = {tag: "object", name: importObject.tableOffset.get(Number(classId)), address: arg};
       
@@ -76,6 +106,7 @@ export class BasicREPL {
     }
     this.currentEnv = {
       globals: new Map(),
+      globalStrs: new Map(),
       classes: new Map(),
       funcs: new Map([['print', { name: "print", members: [NoneT], retType: IntT}],
 		     ]),

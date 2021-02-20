@@ -9,6 +9,7 @@ export type Value =
   | { tag: "bool", value: boolean }
   | { tag: "num", value: number }
   | { tag: "object", name: string, address: number}
+  | { tag: "string", off: number }
 
 export type Type =
   | {tag: "number"}
@@ -46,3 +47,4 @@ export type Expr =
   | { tag: "binExp", pos: Pos, name: string, arg: [Expr, Expr] }
   | { tag: "unaryExp", pos: Pos, name: string, arg: Expr }
   | { tag: "funcCall", pos: Pos, prmPos: Pos, prmsPosArr: Array<Pos>, name: Expr, args: Array<Expr> }
+  | { tag: "string", pos: Pos, value: string }

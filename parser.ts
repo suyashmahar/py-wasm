@@ -62,6 +62,12 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr {
 	tag: "self",
 	pos: getSourcePos(c, s)
       }
+    case "String":
+      return {
+	tag: "string",
+	value: s.substring(c.node.from+1, c.node.to-1),
+	pos: getSourcePos(c, s)
+      }
     case "MemberExpression":
       const pos = getSourcePos(c, s);
       

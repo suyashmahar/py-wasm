@@ -19,6 +19,7 @@ export type ClassEnv = {
 // Numbers are offsets into global memory
 export type GlobalEnv = {
   globals: Map<string, [Type, number]>; // Type and offset
+  globalStrs: Map<string, number>; // string and offset in heap
   funcs: Map<string, FuncEnv>; // Stores the argument types and return
 			       // type for a functions
   classes: Map<string, ClassEnv>; // Classes are a 

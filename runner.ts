@@ -47,12 +47,26 @@ export async function run(source : string, config: any) : Promise<[any, GlobalEn
   const importObject = config.importObject;
 
   if(!importObject.js) {
-    const memory = new WebAssembly.Memory({initial:10, maximum:100});
+    const memory = new WebAssembly.Memory({initial:1024, maximum:1024});
     const table = new WebAssembly.Table({element: "anyfunc", initial:10});
     importObject.js = { memory: memory, table: table };
   }
 
   importObject.updateTableMap(compiled.newEnv);
+
+  var memUint8: Uint8Array = new Uint8Array(importObject.js.memory.buffer);
+  
+  compiled.newEnv.globalStrs.forEach((off, str) => {
+    const strLen: number = str.length;
+    var iter: number = 0;
+    while (iter < strLen) {
+      console.log(`Writing to ${iter + off*8}`);
+      memUint8[iter + off*8] = str.charCodeAt(iter);
+      iter += 1;
+    }
+    memUint8[iter] = 0;
+    console.log(`String ${str} written to offset ${off}`);
+  });
   
   const wasmSource = `(module
     (func $print$other (import "imports" "print_other") (param i64) (result i64))
@@ -81,6 +95,12 @@ export async function run(source : string, config: any) : Promise<[any, GlobalEn
     console.info("Wabt compilation/runtime error recorded");
     throw error;
   }
+
+  // Update the heap pointer after execution
+  const heapPtrBuffer = importObject.js.memory.buffer.slice(0, 8);
+  const heapPtrDV = new DataView(heapPtrBuffer, 0, 8);
+  const heapPtr = heapPtrDV.getBigUint64(0, true);
+  compiled.newEnv.offset = Number(heapPtr);
   
   return [result, compiled.newEnv];
 }

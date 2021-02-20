@@ -54,6 +54,8 @@ function webStart() {
       imports: {
 	print_other: (arg: any) => {
 	  const res = i64ToValue(arg, this.importObject.tableOffset);
+	  console.log("From print_other");
+	  console.log(res);
 	  if (res.tag == "bool") {
 	    this.print_bool(res.value);
 	    return NONE_BI;
@@ -65,7 +67,9 @@ function webStart() {
 	  } else if (res.tag == "none") {
 	    this.print_none(undefined);
 	    return NONE_BI;
-	  } else {
+	  } else if (res.tag == "string") {
+	    return this.print_str(res.off);
+	  }else {
 	    this.print({tag: res.tag} , undefined);
 	    return NONE_BI;
 	  }
