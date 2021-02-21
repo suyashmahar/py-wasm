@@ -100,8 +100,6 @@ export class BasicREPL {
       
       const memBuffer: ArrayBuffer = (importObject as any).js.memory.buffer;
       const memUint8 = new Uint8Array(memBuffer);
-
-      console.log(`Printing string at offset ${off}`);
       
       var iter = off*8;
       while (memUint8[iter] != 0) {
@@ -109,8 +107,49 @@ export class BasicREPL {
       }
 
       return BigInt(iter - off*8);
-    }
+    };
     
+    this.importObject.imports.str_concat = (offBigInt1: any, offBigInt2: any): any => {
+      const off1: number = Number(offBigInt1 - STR_BI);
+      const off2: number = Number(offBigInt2 - STR_BI);
+
+      const len1: number = Number(importObject.imports.str_len(offBigInt1));
+      const len2: number = Number(importObject.imports.str_len(offBigInt2));
+      const newLen = len1 + len2 + 1;
+
+      const memBuffer: ArrayBuffer = (importObject as any).js.memory.buffer;
+      const memUint8 = new Uint8Array(memBuffer);
+      const memUint64 = new BigUint64Array(memBuffer);
+      
+      // Get the current heap pointer
+      const heapPtrBuffer = importObject.js.memory.buffer.slice(0, 8);
+      const heapPtrDV = new DataView(heapPtrBuffer, 0, 8);
+      const heapPtr = Number(heapPtrDV.getBigUint64(0, true));
+
+      // Write the new heap pointer
+      memUint64[0] = BigInt(heapPtr + newLen);
+
+      // Copy the first and second strings
+      var diter: number = heapPtr*8;
+      var siter: number = off1*8;
+
+      while (siter < off1*8 + len1) {
+	memUint8[diter] = memUint8[siter];
+	siter += 1;
+	diter += 1;
+      }
+      
+      siter = off2*8;
+      while (siter < off2*8 + len2) {
+	memUint8[diter] = memUint8[siter];
+	siter += 1;
+	diter += 1;
+      }
+      memUint8[diter] = 0;
+
+      // Return pointer to the new string
+      return STR_BI + BigInt(heapPtr);
+    };    
     
     if(!importObject.js) {
       const memory = new WebAssembly.Memory({initial:10, maximum:20});

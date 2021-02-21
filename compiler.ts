@@ -651,7 +651,7 @@ export function codeGenExpr(expr : Expr, env : envM.GlobalEnv, localParams : Arr
       }
     case "binExp":
       const leftArg  = codeGenExpr(expr.arg[0], env, localParams, source, classT);
-      const op       = codeGenOp(expr.name);
+      const op       = codeGenOp(expr.name, expr.arg[0].iType, expr.arg[1].iType);
       const rightArg = codeGenExpr(expr.arg[1], env, localParams, source, classT);
       return leftArg.concat(rightArg).concat(op);
     case "unaryExp":

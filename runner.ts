@@ -70,7 +70,10 @@ export async function run(source : string, config: any) : Promise<[any, GlobalEn
     (func $print$other (import "imports" "print_other") (param i64) (result i64))
     (func $print$obj (import "imports" "print_obj") (param i64) (param i64) (result i64))
     (func $runtime_check$assert_non_none (import "imports" "assert_non_none") (param i64) (result i64))
+
     (func $str$len (import "imports" "str_len") (param i64) (result i64))
+    (func $str$concat (import "imports" "str_concat") (param i64) (param i64) (result i64))
+
     (import "js" "memory" (memory 1))
     (import "js" "table" (table 1 funcref))
     (func (export "exported_func") ${returnType}      

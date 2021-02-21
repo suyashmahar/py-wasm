@@ -1,6 +1,7 @@
 // -*- mode: typescript; typescript-indent-level: 2; -*-
 
 import * as cmn from "./common";
+import { Type } from "./ast";
 
 export function codeGenUOp(uop: string) : Array<string> {
   switch (uop) {
@@ -16,10 +17,26 @@ export function codeGenUOp(uop: string) : Array<string> {
   }
 }
 
-export function codeGenOp(op: string) : Array<string> {
+export function codeGenStrAdd() : Array<string> {
+  var result: Array<string> = [];
+
+  result.push(`(call $str$concat)`);
+  
+  return result;
+}
+
+export function codeGenAdd(op: string, leftT: Type, rightT: Type) : Array<string> {
+  if (leftT.tag == "str" && rightT.tag == "str") {
+    return codeGenStrAdd();
+  } else {
+    return [`(i64.add)`];
+  }
+}
+
+export function codeGenOp(op: string, leftT: Type, rightT: Type) : Array<string> {
   switch (op) {
     case "+":
-      return [`(i64.add)`];
+      return codeGenAdd(op, leftT, rightT);
     case "-":
       return [`(i64.sub)`];
     case "*":
