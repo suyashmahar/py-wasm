@@ -3,8 +3,8 @@
 import { run } from "./runner";
 import { typecheck_ } from "./compiler";
 import { GlobalEnv } from "./env";
-import { Value, Type, BoolT, IntT, NoneT } from "./ast";
-import { valueToStr, i64ToValue, NONE_BI } from "./common";
+import { Value, Type, BoolT, IntT, NoneT, StrT } from "./ast";
+import { valueToStr, i64ToValue, NONE_BI, STR_BI } from "./common";
 import * as compiler from './compiler';
 
 interface REPL {
@@ -35,7 +35,6 @@ export class BasicREPL {
         importObject.tableOffset.set(val.tableOff, key);
       })
     };
-
 
     this.importObject.imports.print_other = (arg: any) => {
       const res = i64ToValue(arg, this.importObject.tableOffset);
@@ -95,6 +94,22 @@ export class BasicREPL {
       }
       return arg;      
     };
+
+    this.importObject.imports.str_len = (offBigInt: any): any => {
+      const off: number = Number(offBigInt - STR_BI);
+      
+      const memBuffer: ArrayBuffer = (importObject as any).js.memory.buffer;
+      const memUint8 = new Uint8Array(memBuffer);
+
+      console.log(`Printing string at offset ${off}`);
+      
+      var iter = off*8;
+      while (memUint8[iter] != 0) {
+	iter += 1;
+      }
+
+      return BigInt(iter - off*8);
+    }
     
     
     if(!importObject.js) {
@@ -107,6 +122,7 @@ export class BasicREPL {
       globalStrs: new Map(),
       classes: new Map(),
       funcs: new Map([['print', { name: "print", members: [NoneT], retType: IntT}],
+		      ['len', { name: "len", members: [StrT], retType: IntT}],
 		     ]),
       offset: 8,
       classOffset: 0

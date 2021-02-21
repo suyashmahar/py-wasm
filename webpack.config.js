@@ -8,6 +8,10 @@ module.exports = {
         use: 'ts-loader',
         exclude: /(node_modules|tests)/,
       },
+      {
+        test: /\.py$/,
+        use: 'raw-loader',
+      },
     ],
   },
   devtool: 'inline-source-map',

@@ -10,11 +10,12 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "typeRoots": [
-      "node_modules/@types"
+	"node_modules/@types",
+	"custom_types/"
     ],
     "types": [
       "node"
-    ],
+    ]
   },
   "node": {
     "fs": "empty"

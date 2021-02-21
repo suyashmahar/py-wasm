@@ -5,13 +5,19 @@ import {emptyEnv} from './compiler';
 import {GlobalEnv} from './env';
 import {Value, Type} from './ast';
 import {valueToStr, i64ToValue, NONE_BI} from './common';
-import * as ex from './examples';
 
 import {NUM, BOOL, NONE} from './utils';
 
 import * as ace from 'brace';
 import 'brace/mode/python';
 import 'brace/theme/monokai';
+
+import * as strEx from './examples/string_ex.py';
+import * as cnEx from './examples/complex_number_ex.py';
+import * as vecEx from './examples/vector_ex.py';
+import * as patEx from './examples/pattern_print_ex.py';
+import * as testEx from './examples/test_ex.py';
+
 
 var editor: ace.Editor = undefined;
 
@@ -29,29 +35,31 @@ function stringify(typ: Type, arg: any): string {
 }
 
 function webStart() {
+  
+  
   document.addEventListener("DOMContentLoaded", function() {
     editor = ace.edit("user-code"); // sourceElem.value.replace(/\t/g, '    ');
     editor.setTheme("ace/theme/textmate");
     editor.session.setMode("ace/mode/python");
 
     document.getElementById("pattern-print").addEventListener("click", function() {
-      editor.setValue(ex.printPatternEx, -1);
+      editor.setValue(patEx.default, -1);
     });
 
     document.getElementById("ex-list").addEventListener("click", function() {
-      editor.setValue(ex.vectorEx, -1);
+      editor.setValue(vecEx.default, -1);
     });
     
     document.getElementById("ex-complex-number").addEventListener("click", function() {
-      editor.setValue(ex.complexNumberEx, -1);
+      editor.setValue(cnEx.default, -1);
     });
     
     document.getElementById("test-python").addEventListener("click", function() {
-      editor.setValue(ex.testEx, -1);
+      editor.setValue(testEx.default, -1);
     });
     
     document.getElementById("ex-string").addEventListener("click", function() {
-      editor.setValue(ex.stringEx, -1);
+      editor.setValue(strEx.default, -1);
     });
     
     var importObject = {

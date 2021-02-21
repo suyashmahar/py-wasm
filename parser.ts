@@ -353,6 +353,11 @@ export function traverseFunction(c: TreeCursor, s: string) : Stmt {
 
 export function traverseStmt(c : TreeCursor, s : string) : Stmt {
   switch(c.node.type.name) {
+    case "Comment":
+      return {
+	tag: "comment",
+	pos: getSourcePos(c, s)
+      };
     case "PassStatement":
       return { tag: "pass", pos: getSourcePos(c, s) };
     case "ClassDefinition":

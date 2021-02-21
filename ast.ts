@@ -29,6 +29,7 @@ export type ClassBody = { iVars: Array<Stmt>, inherits: Array<Name>,  funcs: Arr
 export type Function = { pos: Pos, name: Name, parametersPos: Pos, parameters: Array<Parameter>, ret: Type, retPos: Pos, body: Array<Stmt> };
 
 export type Stmt =
+  | { tag: "comment", pos: Pos }
   | { tag: "pass", pos: Pos }
   | { tag: "func", content: Function }
   | { tag: "define", pos: Pos, name: Name, staticType: Type, value: Expr }

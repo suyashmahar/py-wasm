@@ -469,7 +469,9 @@ function codeGen(stmt: Stmt, env : envM.GlobalEnv, source: string, localParams: 
       result = result.concat(")) ");
 
       return result;
-  }
+    default:
+      return [""];
+  }  
 }
 
 function codeGenFuncCall(expr: Expr, env: envM.GlobalEnv, localParams: Array<Parameter>, source: string, classT: Type = undefined): Array<string> {
@@ -508,7 +510,9 @@ function codeGenFuncCall(expr: Expr, env: envM.GlobalEnv, localParams: Array<Par
     if (expr.name.tag == "id") {
       if (expr.name.name == "print") {
       	result = argStmts.concat([`(call $print$other)`, ``]);
-      } else {
+      } else if (expr.name.name == "len") {
+	result = argStmts.concat([`(call $str$len)`, ``]);
+      }else {
 	result = argStmts.concat([`(call $${expr.name.name})`, ``]);
       }
     } else {
