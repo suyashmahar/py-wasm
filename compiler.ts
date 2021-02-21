@@ -321,7 +321,7 @@ function codeGenMemberExpr(expr: Expr, env: envM.GlobalEnv, source: string, loca
   if (expr.tag == "memExp") {
     var result: Array<string> = [];
 
-    const lhsType = tc_expr(expr.expr, source, env, paramToEnvType(localParams), classT)
+    const lhsType = expr.expr.iType;
     const varType = lhsType;
     
     var className: string = "";
@@ -480,7 +480,7 @@ function codeGenFuncCall(expr: Expr, env: envM.GlobalEnv, localParams: Array<Par
     
     /* WARN: Hacky way of passing class names to print() */
     if (expr.name.tag == "id" && expr.name.name == "print") {
-      const classRef: Type = tc_expr(expr.args[0], source, env, paramToEnvType(localParams), classT);
+      const classRef: Type = expr.args[0].iType;
       if (classRef != undefined && classRef.tag == "class") {
 	const classEnv = env.classes.get(classRef.name);
 
@@ -613,7 +613,7 @@ export function codeGenExpr(expr : Expr, env : envM.GlobalEnv, localParams : Arr
 	}
       } else if (expr.name.tag == "memExp") {
 	var result = codeGenExpr(expr.name.expr, env, localParams, source, classT);
-	const className = tc_expr(expr.name.expr, source, env, paramToEnvType(localParams), classT);
+	const className = expr.name.expr.iType;
 	if (className.tag == "class") {
 	  const fCallAug: Expr = {
 	    tag: "funcCall",

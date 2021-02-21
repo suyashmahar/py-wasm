@@ -12,11 +12,11 @@ import * as ace from 'brace';
 import 'brace/mode/python';
 import 'brace/theme/monokai';
 
-import * as strEx from './examples/string_ex.py';
-import * as cnEx from './examples/complex_number_ex.py';
-import * as vecEx from './examples/vector_ex.py';
-import * as patEx from './examples/pattern_print_ex.py';
-import * as testEx from './examples/test_ex.py';
+import * as strEx from './py_examples/string_ex.py';
+import * as cnEx from './py_examples/complex_number_ex.py';
+import * as vecEx from './py_examples/vector_ex.py';
+import * as patEx from './py_examples/pattern_print_ex.py';
+import * as testEx from './py_examples/test_ex.py';
 
 
 var editor: ace.Editor = undefined;
@@ -35,8 +35,6 @@ function stringify(typ: Type, arg: any): string {
 }
 
 function webStart() {
-  
-  
   document.addEventListener("DOMContentLoaded", function() {
     editor = ace.edit("user-code"); // sourceElem.value.replace(/\t/g, '    ');
     editor.setTheme("ace/theme/textmate");

@@ -41,13 +41,13 @@ export type Stmt =
   | { tag: "class", name: Name, body: ClassBody }
 
 export type Expr =
-  | { tag: "num", pos: Pos, value: number }
-  | { tag: "self", pos: Pos }
-  | { tag: "none", pos: Pos}
-  | { tag: "bool", pos: Pos, value: boolean}
-  | { tag: "id", pos: Pos, name: string }
-  | { tag: "memExp", pos: Pos, expr: Expr, member: Name }
-  | { tag: "binExp", pos: Pos, name: string, arg: [Expr, Expr] }
-  | { tag: "unaryExp", pos: Pos, name: string, arg: Expr }
-  | { tag: "funcCall", pos: Pos, prmPos: Pos, prmsPosArr: Array<Pos>, name: Expr, args: Array<Expr> }
-  | { tag: "string", pos: Pos, value: string }
+  | { iType?: Type, tag: "num", pos: Pos, value: number }
+  | { iType?: Type, tag: "self", pos: Pos }
+  | { iType?: Type, tag: "none", pos: Pos}
+  | { iType?: Type, tag: "bool", pos: Pos, value: boolean}
+  | { iType?: Type, tag: "id", pos: Pos, name: string }
+  | { iType?: Type, tag: "memExp", pos: Pos, expr: Expr, member: Name }
+  | { iType?: Type, tag: "binExp", pos: Pos, name: string, arg: [Expr, Expr] }
+  | { iType?: Type, tag: "unaryExp", pos: Pos, name: string, arg: Expr }
+  | { iType?: Type, tag: "funcCall", pos: Pos, prmPos: Pos, prmsPosArr: Array<Pos>, name: Expr, args: Array<Expr> }
+  | { iType?: Type, tag: "string", pos: Pos, value: string }
