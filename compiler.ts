@@ -161,19 +161,14 @@ export function compile(source: string, env: envM.GlobalEnv) : CompileResult {
   tempHeapPtr = withDefines.offset;
   tempStrAlloc = new Map();
   
-  const scratchVar : string = `(local $$last i64)
-(i32.const 0)
-(i64.const ${withDefines.offset})
-(i64.store) ;; Save the new heap offset`;
-  
-  const localDefines = [scratchVar];
-  
+  const scratchVar : string = `(local $$last i64)`;
+    
 
   /* Typecheck stuff */
   typecheck(ast, source, withDefines);
   
   const commandGroups = ast.map((stmt) => codeGen(stmt, withDefines, source));
-  const commands = localDefines.concat([].concat.apply([], commandGroups));
+  const commands = [].concat([].concat.apply([], commandGroups));
 
   var funcsStr = "";
   funcs.forEach(fun => {
@@ -184,9 +179,18 @@ export function compile(source: string, env: envM.GlobalEnv) : CompileResult {
   tempStrAlloc.forEach((off, str) => {
     withDefines.globalStrs.set(str, off);
   });
+
+  /* Set the pointer to the new value after string allocations */
+  withDefines.offset = tempHeapPtr;
+
+  const wasmSource: string = scratchVar
+    + `\n(i32.const 0)\n`
+    + `(i64.const ${withDefines.offset})\n`
+    + `(i64.store) ;; Save the new heap offset\n`
+    + commands.join("\n");
   
   return {
-    wasmSource: commands.join("\n"),
+    wasmSource: wasmSource,
     newEnv: withDefines,
     funcs: funcsStr,
   };
@@ -569,10 +573,13 @@ export function codeGenString(expr: Expr, env: envM.GlobalEnv, localParams : Arr
     const str: string = expr.value;
     const strLen: number = expr.value.length + 1; // Extra null character
 
+
     var strPtr = tempHeapPtr;
     if (tempStrAlloc.get(str) == undefined) {
       tempStrAlloc.set(str, tempHeapPtr);
       tempHeapPtr += strLen;
+    } else {
+      strPtr = tempStrAlloc.get(str);
     }
     
     return [

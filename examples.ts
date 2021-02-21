@@ -1,5 +1,13 @@
 // -*- mode: typescript; typescript-indent-level: 2; -*-
 
+export var stringEx: string = `def print_pattern(a: str):
+    print("------")
+    print(a)
+    print("------")
+    
+hello_world: str = "Hello! World"
+print_pattern(hello_world)`;
+
 export var complexNumberEx: string = `class ComplexNumber:
     real: int = 0
     img: int = 0

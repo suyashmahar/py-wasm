@@ -2,7 +2,7 @@
 
 import { parser } from "lezer-python";
 import { TreeCursor } from "lezer-tree";
-import { Name, Function, Expr, Stmt, Parameter, Pos, Branch, Type, NoneT, BoolT, IntT } from "./ast";
+import { Name, Function, Expr, Stmt, Parameter, Pos, Branch, Type, NoneT, StrT, BoolT, IntT } from "./ast";
 import * as err from "./error";
 import { tr } from "./common";
 
@@ -184,6 +184,8 @@ export function parseType(source: string, typeStr : string, pos: Pos) : Type {
   switch (typeStr) {
     case "bool":
       return BoolT;
+    case "str":
+      return StrT;
     case "int":
       return IntT;
     case "None":

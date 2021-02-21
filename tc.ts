@@ -2,7 +2,7 @@
 
 import { internalError, typeError, symLookupError, argError, scopeError, parseError } from './error';
 import { GlobalEnv, ClassEnv, FuncEnv } from "./env";
-import { Type, Value, Expr, Stmt, Parameter, Pos, Branch, ClassT, BoolT, IntT, NoneT } from "./ast";
+import { Type, Value, Expr, Stmt, Parameter, Pos, Branch, ClassT, BoolT, IntT, StrT, NoneT } from "./ast";
 import { tr, eqT, neqT, canAssignNone } from "./common"
 
 export type EnvType = Record<string, Type>;
@@ -174,7 +174,7 @@ tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvTyp
       const lhsType = stmt.staticType;
 
       if (neqT(rhsType, lhsType) && (neqT(rhsType, NoneT) || !canAssignNone(lhsType))) {
-	const errMsg = `${tr(rhsType)} value assigned to '${stmt.name}' which is of `
+	const errMsg = `${tr(rhsType)} value assigned to '${stmt.name.str}' which is of `
 	  + `type ${tr(lhsType)}`;
 	typeError(stmt.pos, errMsg, source);
       }
@@ -275,6 +275,8 @@ export function
 tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvType>{},
 	classEnv: Type = undefined): Type {
   switch(expr.tag) {
+    case "string":
+      return StrT;
     case "memExp":
       const exprT = tc_expr(expr.expr, source, gblEnv, funEnv, classEnv);
       if (exprT.tag != "class") {

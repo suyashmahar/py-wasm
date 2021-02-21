@@ -60,12 +60,10 @@ export async function run(source : string, config: any) : Promise<[any, GlobalEn
     const strLen: number = str.length;
     var iter: number = 0;
     while (iter < strLen) {
-      console.log(`Writing to ${iter + off*8}`);
       memUint8[iter + off*8] = str.charCodeAt(iter);
       iter += 1;
     }
     memUint8[iter] = 0;
-    console.log(`String ${str} written to offset ${off}`);
   });
   
   const wasmSource = `(module

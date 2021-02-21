@@ -9,17 +9,19 @@ export type Value =
   | { tag: "bool", value: boolean }
   | { tag: "num", value: number }
   | { tag: "object", name: string, address: number}
-  | { tag: "string", off: number }
+  | { tag: "str", off: number }
 
 export type Type =
   | {tag: "number"}
   | {tag: "bool"}
   | {tag: "none"}
+  | {tag: "str"}
   | {tag: "class", name: string}
 
 export const BoolT:  Type = { tag: "bool" };
 export const IntT:   Type = { tag: "number" };
 export const NoneT:  Type = { tag: "none" };
+export const StrT:   Type = { tag: "str" };
 export const ClassT: Type = { tag: "class", name: undefined };
 
 export type Name = { str: string, pos: Pos }

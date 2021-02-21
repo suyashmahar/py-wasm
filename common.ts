@@ -1,6 +1,6 @@
 // -*- mode: typescript; typescript-indent-level: 2; -*-
 
-import { Type, NoneT, IntT, BoolT, Value } from "./ast";
+import { Type, NoneT, IntT, BoolT, StrT, Value } from "./ast";
 import { valError, dummyPos } from "./error";
 
 export const TRUE_VAL  = "4611686018427387905"; // (1<<62)+1
@@ -47,7 +47,7 @@ export function i64ToValue(val: any, classMap: Map<number, string> = new Map()):
 	case (STR_BI >> BigInt(32)):
 	  console.log("Got a string");
 	  
-	  result = { tag: "string", off: Number(lower32) };
+	  result = { tag: "str", off: Number(lower32) };
 	  break;
 	default:
 	  if (upper32 != BigInt(0) && (upper32 + BigInt(1)) != BigInt(0)) {
@@ -70,6 +70,8 @@ export function tr(type: Type): string {
       return "int";
     case BoolT:
       return "bool";
+    case StrT:
+      return "string";
     default:
       if (type.tag == "class") {
 	return `<${type.name}>`;
@@ -107,6 +109,8 @@ export function strToType(str: string): Type {
       return IntT;
     case "bool":
       return BoolT;
+    case "str":
+      return StrT;
     default:
       throw `Can't translate type '${str}'`;
   }
@@ -125,6 +129,8 @@ export function valueToStr(arg: Value): string {
       }
     case "none":
       return `None`;
+    case "str":
+      return `string`;
     case "num":
       return `${arg.value}`;
     case "object":

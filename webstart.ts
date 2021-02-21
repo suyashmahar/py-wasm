@@ -50,6 +50,10 @@ function webStart() {
       editor.setValue(ex.testEx, -1);
     });
     
+    document.getElementById("ex-string").addEventListener("click", function() {
+      editor.setValue(ex.stringEx, -1);
+    });
+    
     var importObject = {
       imports: {
 	print_other: (arg: any) => {
@@ -67,7 +71,7 @@ function webStart() {
 	  } else if (res.tag == "none") {
 	    this.print_none(undefined);
 	    return NONE_BI;
-	  } else if (res.tag == "string") {
+	  } else if (res.tag == "str") {
 	    return this.print_str(res.off);
 	  }else {
 	    this.print({tag: res.tag} , undefined);

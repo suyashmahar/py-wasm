@@ -47,7 +47,7 @@ export class BasicREPL {
 	const val = res.value;
 	importObject.imports.print_num(val);
 	return NONE_BI;
-      } else if (res.tag == "string") {
+      } else if (res.tag == "str") {
 	return importObject.imports.print_str(res.off);
       } else if (res.tag == "none") {
 	importObject.imports.print_none(undefined);
@@ -68,9 +68,7 @@ export class BasicREPL {
       var str = "";
       while (memUint8[iter] != 0) {
 	const nextChar = String.fromCharCode(memUint8[iter]);
-	console.log(`Reading from ${iter}`);
-	console.log(`nextChar: (ascii: ${memUint8[iter]})`);
-	console.log(nextChar);
+
 	str = str.concat(nextChar);
 	iter += 1;
       }
