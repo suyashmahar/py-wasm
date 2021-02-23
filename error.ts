@@ -28,7 +28,7 @@ export function genericError(errType: string, pos: Pos, msg: string, source: str
   const errTxt = `${errType}: ${msg}`
   
   const text: string = [getDecorator(pos, source), errTxt].join('\n');
-  throw new Error(text);
+  throw (text);
 }
 
 export const typeError = (pos: Pos, msg: string, source: string): never => genericError('TypeError', pos, msg, source);
@@ -36,10 +36,12 @@ export const symLookupError = (pos: Pos, msg: string, source: string): never => 
 export const argError = (pos: Pos, msg: string, source: string): never => genericError('ArgumentError', pos, msg, source);
 export const scopeError = (pos: Pos, msg: string, source: string): never => genericError('ScopeError', pos, msg, source);
 export const valError = (pos: Pos, msg: string, source: string): never => genericError('ValueError', pos, msg, source);
+export const idxError = (pos: Pos, msg: string, source: string): never => genericError('IndexError', pos, msg, source);
+
 
 export const parseError = (pos: Pos, msg: string, source: string): never => genericError('ParseError', pos, msg, source);
 export function internalError(): never {
   const errTxt = `CompilerError: An internal function ran into an invalid state. Please report this bug to the compiler devs.`;
-  throw new Error(errTxt);
+  throw (errTxt);
 }
 

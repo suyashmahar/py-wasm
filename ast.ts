@@ -41,6 +41,7 @@ export type Stmt =
   | { tag: "class", name: Name, body: ClassBody }
 
 export type Expr =
+  | { iType?: Type, tag: "intervalExp", pos: Pos, expr: Expr, args: Expr[] }
   | { iType?: Type, tag: "num", pos: Pos, value: number }
   | { iType?: Type, tag: "self", pos: Pos }
   | { iType?: Type, tag: "none", pos: Pos}

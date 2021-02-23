@@ -594,6 +594,32 @@ export function codeGenString(expr: Expr, env: envM.GlobalEnv, localParams : Arr
   }
 }
 
+export function codeGenIntervalExpr(expr: Expr, env: envM.GlobalEnv, source: string, localParams: Array<Parameter>, classT: Type = undefined) : Array<string> {
+  if (expr.tag == "intervalExp") {
+    var result: Array<string> = [];
+
+    result = result.concat(codeGenExpr(expr.expr, env, localParams, source, classT));
+    
+    /* Evaluate all the arguments */
+    var args: string[] = []
+    expr.args.forEach(arg => {
+      args = args.concat(codeGenExpr(arg, env, localParams, source, classT));
+    });
+
+    while (args.length != 3) {
+      args.push(`(i64.const ${cmn.NONE_BI})`);
+    }
+
+    result = result.concat(args);
+    
+    result.push(`(call $str$slice)`);
+  } else {
+    err.internalError();
+  }
+  
+  return result;
+}
+
 export function codeGenExpr(expr : Expr, env : envM.GlobalEnv, localParams : Array<Parameter>, source: string, classT: Type = undefined) : Array<string> {
   switch(expr.tag) {
     case "string":
@@ -604,6 +630,8 @@ export function codeGenExpr(expr : Expr, env : envM.GlobalEnv, localParams : Arr
 	      `(i64.add)`];
     case "memExp":
       return codeGenMemberExpr(expr, env, source, localParams, classT);
+    case "intervalExp":
+      return codeGenIntervalExpr(expr, env, source, localParams, classT);
     case "funcCall":
       if (expr.name.tag == "id") { /* Call to global function */
 	if (env.funcs.get(expr.name.name) != undefined) { /* Call to global function */

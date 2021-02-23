@@ -73,6 +73,7 @@ export async function run(source : string, config: any) : Promise<[any, GlobalEn
 
     (func $str$len (import "imports" "str_len") (param i64) (result i64))
     (func $str$concat (import "imports" "str_concat") (param i64) (param i64) (result i64))
+    (func $str$slice (import "imports" "str_slice") (param i64) (param i64) (param i64) (param i64) (result i64))
 
     (import "js" "memory" (memory 1))
     (import "js" "table" (table 1 funcref))

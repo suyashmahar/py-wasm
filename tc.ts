@@ -342,6 +342,10 @@ tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvTy
     case "string":
       expr.iType = StrT;
       return [expr, StrT];
+    case "intervalExp":
+      expr.iType = StrT; // HACK: Everything is a string for now, it
+			 // could be a list in future
+      return [expr, expr.iType];
     case "memExp":
       const exprTExpr = tc_expr(expr.expr, source, gblEnv, funEnv, classEnv);
       const exprT = exprTExpr[1];

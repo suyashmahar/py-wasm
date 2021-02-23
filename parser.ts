@@ -76,19 +76,45 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr {
       const lhsExpr = traverseExpr(c, s);
 
       c.nextSibling();
-      c.nextSibling();
 
-      const memStr = s.substring(c.from, c.to);
-      const memPos = getSourcePos(c, s);
+      switch (s.substring(c.from, c.to)) {
+	case ("."):
+	  c.nextSibling();
 
-      c.parent();
+	  const memStr = s.substring(c.from, c.to);
+	  const memPos = getSourcePos(c, s);
 
-      return {
-	tag: "memExp",
-	pos: pos,
-	expr: lhsExpr,
-	member: { str: memStr, pos: memPos}
-      };
+	  c.parent();
+
+	  return {
+	    tag: "memExp",
+	    pos: pos,
+	    expr: lhsExpr,
+	    member: { str: memStr, pos: memPos}
+	  };
+	case ("["):
+	  c.nextSibling();
+
+	  var args: Expr[] = [traverseExpr(c, s)];
+	  
+	  c.nextSibling();
+
+	  while (c.node.type.name != ']') {
+	    c.nextSibling(); // Skip the colon
+	    args.push(traverseExpr(c, s));
+
+	    c.nextSibling();
+	  }
+
+	  c.parent();
+
+	  return {
+	    tag: "intervalExp",
+	    expr: lhsExpr,
+	    pos: pos,
+	    args: args,
+	  }
+      }
     case "CallExpression":
       const cExpPos = getSourcePos(c, s);
       
