@@ -602,12 +602,15 @@ export function codeGenIntervalExpr(expr: Expr, env: envM.GlobalEnv, source: str
     
     /* Evaluate all the arguments */
     var args: string[] = []
+    var argCnt = 0;
     expr.args.forEach(arg => {
       args = args.concat(codeGenExpr(arg, env, localParams, source, classT));
+      argCnt += 1;
     });
 
-    while (args.length != 3) {
+    while (argCnt < 3) {
       args.push(`(i64.const ${cmn.NONE_BI})`);
+      argCnt += 1;
     }
 
     result = result.concat(args);

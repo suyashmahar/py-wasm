@@ -176,10 +176,10 @@ export class BasicREPL {
       const strOff: number = Number(str - STR_BI);
       const strLen: number = Number(importObject.imports.str_len(str));
 
-      if (arg1 >= BigInt(strLen)) {
+      if (Number(arg1) >= strLen || Number(arg1) <= -strLen) {
 	err.idxError({line:0, col:0, len:0}, `Index ${arg1} out of range, string length ${strLen}.`, "");
       }
-      
+
       const memBuffer: ArrayBuffer = (importObject as any).js.memory.buffer;
       const memUint8 = new Uint8Array(memBuffer);
       const memUint64 = new BigUint64Array(memBuffer);
@@ -194,11 +194,22 @@ export class BasicREPL {
 
       // Copy the first and second strings
       var diter: number = heapPtr*8;
-      var siter: number = strOff*8 + Number(arg1);
+      var siter: number = strOff*8 + (strLen + Number(arg1))%strLen;
 
-      while (siter < strOff*8 + Number(arg1) + 1) {
+      var end = siter + 1;
+      var step = 1;
+      
+      if (arg2 != NONE_BI) {
+	end = strOff*8 + (strLen + Number(arg2))%strLen;
+      }
+
+      if (arg3 != NONE_BI) {
+	step = Math.abs(Number(arg3));
+      }
+
+      while (siter < end) {
 	memUint8[diter] = memUint8[siter];
-	siter += 1;
+	siter += step;
 	diter += 1;
       }
       
