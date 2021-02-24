@@ -66,10 +66,30 @@ export class BasicREPL {
       
       var iter = off*8;
       var str = "";
+      var isEscaped = false;
       while (memUint8[iter] != 0) {
 	const nextChar = String.fromCharCode(memUint8[iter]);
 
-	str = str.concat(nextChar);
+	if (isEscaped) {
+	  switch (nextChar) {
+	    case "t":
+	      str = str.concat("    ");
+	    case "\\":
+	      str = str.concat("\\");
+	    case "n":
+	      str = str.concat("\n");
+	    case "\"":
+	      str = str.concat(`"`);
+	    case "'":
+	      str = str.concat(`'`);
+	  }
+	  isEscaped = false;
+	} else if (nextChar == "\\") {
+	  isEscaped = true;
+	} else {
+	  str = str.concat(nextChar);
+	}
+	
 	iter += 1;
       }
 
@@ -146,12 +166,12 @@ export class BasicREPL {
 	siter += 1;
 	diter += 1;
       }
-      memUint8[diter] = 0;
+      memUint8[diter] = 0; // Add the final null char
 
       // Return pointer to the new string
       return STR_BI + BigInt(heapPtr);
     }; 
-    
+    // "adlkjfs"[1:2:1]
     this.importObject.imports.str_slice = (str: any, arg1: any, arg2: any, arg3: any): any => {
       const strOff: number = Number(str - STR_BI);
       const strLen: number = Number(importObject.imports.str_len(str));
