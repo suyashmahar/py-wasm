@@ -9,5 +9,6 @@ Currently supports:
 4. Non-nested functions
 5. Comments :upside_down_face:
 6. Booleans 
+7. REPL
 
 Try it here: https://suyashmahar.com/py-wasm
