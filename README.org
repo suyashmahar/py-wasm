@@ -1,0 +1,14 @@
+* PY-WASM
+
+Python to WebAssembly compiler for CSE 231. Based on the ChocoPy subset.
+
+Currently supports:
+1. Classes (no-inheritance)
+2. Strings (~len~, slices including negative indices and steps)
+3. 32-bit integers
+4. Non-nested functions
+5. Comments :upside_down_face:
+6. Booleans 
+7. REPL
+
+Try it here: https://suyashmahar.com/py-wasm
