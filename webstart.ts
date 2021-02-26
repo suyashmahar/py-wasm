@@ -34,8 +34,34 @@ function stringify(typ: Type, arg: any): string {
   }
 }
 
+function registerDialogs() {
+  const aboutModal = document.getElementById("aboutModal");
+  
+  const aboutBtn = document.getElementById("aboutBtn");
+
+  // Get the <span> element that closes the aboutModal
+  const aboutCloseBtn = document.getElementById("closeAboutModal");
+  
+
+  // When the user clicks on the button, open the aboutModal
+  aboutBtn.addEventListener("click", function() {
+    aboutModal.style.display = "block";
+  });
+
+  aboutCloseBtn.addEventListener("click", function() {
+    aboutModal.style.display = "none";
+  });
+
+  window.addEventListener("click", function(event) {
+    if (event.target == aboutModal) {
+      aboutModal.style.display = "none";
+    }
+  });
+}
+
 function webStart() {
   document.addEventListener("DOMContentLoaded", function() {
+    registerDialogs();
     editor = ace.edit("user-code"); // sourceElem.value.replace(/\t/g, '    ');
     editor.setTheme("ace/theme/textmate");
     editor.session.setMode("ace/mode/python");

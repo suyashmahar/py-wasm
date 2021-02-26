@@ -74,14 +74,19 @@ export class BasicREPL {
 	  switch (nextChar) {
 	    case "t":
 	      str = str.concat("    ");
+	      break;
 	    case "\\":
 	      str = str.concat("\\");
+	      break;
 	    case "n":
 	      str = str.concat("\n");
+	      break;
 	    case "\"":
 	      str = str.concat(`"`);
+	      break;
 	    case "'":
 	      str = str.concat(`'`);
+	      break;
 	  }
 	  isEscaped = false;
 	} else if (nextChar == "\\") {
