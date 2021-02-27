@@ -26,8 +26,13 @@ export function getDecorator(pos: Pos, source: string): string {
 
 export function genericError(errType: string, pos: Pos, msg: string, source: string): never {
   const errTxt = `${errType}: ${msg}`
+  var decorator = undefined;
+
+  if (pos.len != 0) {
+    decorator = getDecorator(pos, source);
+  }
   
-  const text: string = [getDecorator(pos, source), errTxt].join('\n');
+  const text: string = [decorator, errTxt].join('\n');
   throw (text);
 }
 

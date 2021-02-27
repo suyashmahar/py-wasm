@@ -537,7 +537,31 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
 	cond: condExpr,
 	whileBody: whileBody
       };
+
+    case "ForStatement":
+      c.firstChild();
+      c.nextSibling(); // Skip the for keyword
+
+      const varName = s.substring(c.node.from, c.node.to);
+      const varPos = getSourcePos(c, s);
       
+      c.nextSibling(); // Skip in keyword
+
+      const str: Expr = traverseExpr(c, s);
+
+      c.nextSibling(); // Go to the body
+
+      var forBody: Array<Stmt> = [];
+      do {
+	whileBody = whileBody.concat(traverseStmt(c, s));
+      } while (c.nextSibling());
+      
+      return {
+	tag: "for",
+	str: str,
+	varName: {str: varName, pos: varPos },
+	body: forBody
+      }
     case "ExpressionStatement":
       c.firstChild();
       const expr = traverseExpr(c, s);

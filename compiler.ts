@@ -22,10 +22,12 @@ var tempStrAlloc : Map<string, number> = new Map();
 
 export function reset() {
   funcs = [];
+  tempStrAlloc = new Map();
 }
 
 export function abort() {
   funcs = [];
+  tempStrAlloc = new Map();
 }
 
 export const emptyEnv : envM.GlobalEnv = {
@@ -588,7 +590,7 @@ export function codeGenString(expr: Expr, env: envM.GlobalEnv, localParams : Arr
     
     return [
       `(i64.const ${cmn.STR_BI + BigInt(strPtr)}) ;; `+
-	`Heap pointer for string '${str}' of length ${strLen}`];
+	`(${strPtr}) Heap pointer for string '${str}' of length ${strLen}`];
   } else {
     err.internalError();
   }

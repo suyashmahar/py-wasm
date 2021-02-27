@@ -39,6 +39,7 @@ export type Stmt =
   | { tag: "if", cond: Expr, condPos: Pos, ifBody: Array<Stmt>, branches: Array<Branch>, elseBody: Array<Stmt> }
   | { tag: "return", pos: Pos, expr: Expr }
   | { tag: "class", name: Name, body: ClassBody }
+  | { tag: "for", varName: Name, str: Expr, body: Array<Stmt> }
 
 export type Expr =
   | { iType?: Type, tag: "intervalExp", pos: Pos, expr: Expr, args: Expr[] }

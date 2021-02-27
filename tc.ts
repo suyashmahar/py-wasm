@@ -20,7 +20,6 @@ export function
 tc_binExp(pos: Pos, op : string, leftType : Type, rightType : Type, source: string) : Type {
   switch (op) {
     case "-":
-    case "*":
     case "%":
     case "//":
       if (leftType != IntT || rightType != IntT) {
@@ -29,6 +28,13 @@ tc_binExp(pos: Pos, op : string, leftType : Type, rightType : Type, source: stri
 	typeError(pos, errMsg, source);
       }
       return IntT;
+    case "*":
+      if ((leftType != IntT && leftType != StrT) || rightType != IntT) {
+	const errMsg = `Operator ${op} expects first expression to be either string or int, and`
+	  + ` second expression to be int, got ${tr(leftType)} and ${tr(rightType)}`;
+	typeError(pos, errMsg, source);
+      }
+      return leftType;
     case "+":
       if ((leftType != rightType) || (leftType != StrT && leftType != IntT)) {
 	const errMsg = `Operator ${op} expects both args to be either int or str, got ${tr(leftType)} `

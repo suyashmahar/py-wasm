@@ -11,7 +11,7 @@ import wabt from 'wabt';
 import * as compiler from './compiler';
 import { parse } from './parser';
 import { GlobalEnv } from './env';
-import { lintWasmSource } from './linter';
+import { prettifyWasmSource } from './linter';
 import { NONE_VAL } from './common';
 
 // NOTE(joe): This is a hack to get the CLI Repl to run. WABT registers a global
@@ -60,7 +60,7 @@ export async function run(source : string, config: any) : Promise<[any, GlobalEn
     const strLen: number = str.length;
     var iter: number = 0;
     while (iter < strLen) {
-      memUint8[iter + off*8] = str.charCodeAt(iter);
+      memUint8[iter + off] = str.charCodeAt(iter);
       iter += 1;
     }
     memUint8[iter] = 0;
@@ -74,6 +74,9 @@ export async function run(source : string, config: any) : Promise<[any, GlobalEn
     (func $str$len (import "imports" "str_len") (param i64) (result i64))
     (func $str$concat (import "imports" "str_concat") (param i64) (param i64) (result i64))
     (func $str$slice (import "imports" "str_slice") (param i64) (param i64) (param i64) (param i64) (result i64))
+    (func $str$eq (import "imports" "str_eq") (param i64) (param i64) (result i64))
+    (func $str$neq (import "imports" "str_neq") (param i64) (param i64) (result i64))
+    (func $str$mult (import "imports" "str_mult") (param i64) (param i64) (result i64))
 
     (import "js" "memory" (memory 1))
     (import "js" "table" (table 1 funcref))
@@ -85,7 +88,7 @@ export async function run(source : string, config: any) : Promise<[any, GlobalEn
   )`;
 
   console.log("Generated WASM");
-  console.log(lintWasmSource(wasmSource));
+  console.log(prettifyWasmSource(wasmSource));
 
   try {
     const myModule = wabtInterface.parseWat("test.wat", wasmSource);

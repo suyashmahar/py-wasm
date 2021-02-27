@@ -1,4 +1,4 @@
-export function lintWasmSource(wasmSource: string): string {
+export function prettifyWasmSource(wasmSource: string): string {
     const split = wasmSource.split("\n");
     var processed: Array<string> = [];
 
