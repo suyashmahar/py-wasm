@@ -16,10 +16,10 @@ export class BasicREPL {
   currentEnv: GlobalEnv
   importObject: any
   memory: any
+  newlyConstructed: boolean
   constructor(importObject : any) {
-    console.log("Constructing new object");
-
     compiler.reset();
+    this.newlyConstructed = true;
     this.importObject = importObject;
     this.importObject.nameMap = new Array<string>();
     this.importObject.tableOffset = new Map<number, string>();
@@ -61,8 +61,6 @@ export class BasicREPL {
     this.importObject.imports.print_str = (off: number) => {
       const memBuffer: ArrayBuffer = (importObject as any).js.memory.buffer;
       const memUint8 = new Uint8Array(memBuffer);
-
-      console.log(`Printing string at offset ${off}`);
       
       var iter = off;
       var str = "";
@@ -98,15 +96,12 @@ export class BasicREPL {
 	iter += 1;
       }
 
-      console.log(`String: ${str}`);
-      
-      const elt = document.createElement("pre");
-      document.getElementById("output").appendChild(elt);
-      elt.innerText = str;
+      const typ: Type = {tag: "str"};
+      importObject.imports.print_txt(str);
 
       return NONE_BI;	  
     },
-    
+
     this.importObject.imports.print_obj = (arg : any, classId: any) => {
       const classObj: Value = {tag: "object", name: importObject.tableOffset.get(Number(classId)), address: arg};
       
@@ -170,6 +165,8 @@ export class BasicREPL {
 	diter += 1;
       }
       memUint8[diter] = 0; // Add the final null char
+
+      console.log(`allocated string at ${heapPtr} of length ${newLen}`);
 
       // Return pointer to the new string
       return STR_BI + BigInt(heapPtr);
@@ -264,7 +261,14 @@ export class BasicREPL {
       var step = 1;
       
       if (arg2 != NONE_BI) {
-	end = strOff + (strLen + Number(arg2))%strLen;
+	if (Number(arg2) > 0) {
+	  end = strOff + Number(arg2);
+	  if (end > strOff + strLen) {
+	    end = strOff + strLen;
+	  }
+	} else {
+	  end = strOff + (strLen + Number(arg2))%strLen;
+	}
       }
 
       if (arg3 != NONE_BI) {
@@ -286,10 +290,12 @@ export class BasicREPL {
       return STR_BI + BigInt(resultOff);
     };    
     
-    if(!importObject.js) {
-      const memory = new WebAssembly.Memory({initial:10, maximum:20});
+    if(!importObject.js || this.newlyConstructed) {
+      console.log("Constructing new js object");
+      const memory = new WebAssembly.Memory({initial:10, maximum:2000});
       const table = new WebAssembly.Table({element: "anyfunc", initial: 10});
       this.importObject.js = { memory: memory, table: table };
+      this.newlyConstructed = false;
     }
     this.currentEnv = {
       globals: new Map(),
@@ -302,14 +308,14 @@ export class BasicREPL {
       classOffset: 0
     };
   }
-  async run(source : string) : Promise<Value> {
+  async run(source : string) : Promise<[Value, string]> {
     this.importObject.updateNameMap(this.currentEnv); // is this the right place for updating the object's env?
     this.importObject.updateTableMap(this.currentEnv);
-    const [result, newEnv] = await run(source, {importObject: this.importObject, env: this.currentEnv});
+    const [result, newEnv, compiled] = await run(source, {importObject: this.importObject, env: this.currentEnv});
     this.currentEnv = newEnv;
     console.log("returning");
     console.log(result);
-    return result;
+    return [result, compiled];
   }
 
   async tc(source : string) : Promise<Type> {

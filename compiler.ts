@@ -23,6 +23,8 @@ var tempStrAlloc : Map<string, number> = new Map();
 export function reset() {
   funcs = [];
   tempStrAlloc = new Map();
+  tempHeapPtr = 0;
+  prevFuncs = [];
 }
 
 export function abort() {

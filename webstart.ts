@@ -5,6 +5,7 @@ import {emptyEnv} from './compiler';
 import {GlobalEnv} from './env';
 import {Value, Type} from './ast';
 import {valueToStr, i64ToValue, NONE_BI} from './common';
+import {prettifyWasmSource} from './linter';
 
 import {NUM, BOOL, NONE} from './utils';
 
@@ -17,7 +18,6 @@ import * as cnEx from './py_examples/complex_number_ex.py';
 import * as vecEx from './py_examples/vector_ex.py';
 import * as patEx from './py_examples/pattern_print_ex.py';
 import * as testEx from './py_examples/test_ex.py';
-
 
 var editor: ace.Editor = undefined;
 
@@ -146,7 +146,14 @@ function webStart() {
 	    throw new Error("Operation on None");
 	  }
 	  return arg;
-	}
+	},
+	
+	print_txt: (arg: any) => {
+	  const elt = document.createElement("pre");
+	  document.getElementById("output").appendChild(elt);
+	  elt.innerText = arg;
+	},
+
 
       },
       nameMap: new Array<string>(),
@@ -180,6 +187,14 @@ function webStart() {
       elt.innerText = String(result);
     }
 
+    function showSource(compiled: string): void {
+      console.log("showing source");
+      console.log(prettifyWasmSource(compiled));
+
+      const compiledHtml = prettifyWasmSource(compiled).replace(/\n/g, "<br>").replace(/ /g, "&nbsp;");
+      document.getElementById("outputSource").innerHTML = compiledHtml;
+    }
+
     function renderError(result : any) : void {
       const elt = document.createElement("pre");
       document.getElementById("output").appendChild(elt);
@@ -193,6 +208,8 @@ function webStart() {
       const replCodeElement = document.getElementById("next-code") as HTMLInputElement;
       replCodeElement.addEventListener("keypress", (e) => {
         if(e.key === "Enter" && !(e.shiftKey)) {
+	  e.preventDefault();
+	  
           const output = document.createElement("div");
           const prompt = document.createElement("span");
           prompt.innerText = "»";
@@ -206,7 +223,7 @@ function webStart() {
           const source = replCodeElement.value;
           elt.value = source;
           replCodeElement.value = "";
-          repl.run(source).then((r) => { renderResult(valueToStr(r)); console.log ("run finished") })
+          repl.run(source).then((r) => { renderResult(valueToStr(r[0])); console.log ("run finished") })
               .catch((e) => { renderError(e); console.log("run failed", e) });;
         }
       });
@@ -222,8 +239,12 @@ function webStart() {
       const source = editor.getValue();
       setupRepl();
       //   const output = document.getElementById("output").innerHTML = "";
-      repl.run(source).then((r) => { renderResult(valueToStr(r)); console.log ("run finished") })
-        .catch((e) => { renderError(e); console.log("run failed", e) });;
+      repl.run(source).then((result) => {
+	const r = result[0];
+	const compiled = result[1];
+	renderResult(valueToStr(r)); console.log ("run finished")
+	showSource(compiled);
+      }).catch((e) => { renderError(e); console.log("run failed", e) });;
     });
   });
 }

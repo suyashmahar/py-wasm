@@ -28,7 +28,7 @@ if(typeof process !== "undefined") {
   };
 }
 
-export async function run(source : string, config: any) : Promise<[any, GlobalEnv]> {
+export async function run(source : string, config: any) : Promise<[any, GlobalEnv, string]> {
   const wabtInterface = await wabt();
   const parsed = parse(source);
   var returnType = "";
@@ -108,5 +108,5 @@ export async function run(source : string, config: any) : Promise<[any, GlobalEn
   const heapPtr = heapPtrDV.getBigUint64(0, true);
   compiled.newEnv.offset = Number(heapPtr);
   
-  return [result, compiled.newEnv];
+  return [result, compiled.newEnv, wasmSource];
 }
