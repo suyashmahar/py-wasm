@@ -187,8 +187,9 @@ export class BasicREPL {
     };
 
     this.importObject.imports.str_eq = (offBigInt1: any, offBigInt2: any): any => {
-      const off1: number = Number(offBigInt1 - STR_BI);
-      const off2: number = Number(offBigInt2 - STR_BI);
+      const lower32Mask = ((BigInt(1)<<BigInt(32)) - BigInt(1));
+      const off1: number = Number(offBigInt1 & lower32Mask);
+      const off2: number = Number(offBigInt2 & lower32Mask);
 
       const memUint8 = importObject.imports.get_uint8_repr();
       
