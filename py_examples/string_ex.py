@@ -1,15 +1,42 @@
 # Function to add border to a string and
 # print it
 def print_pattern(a: str):
-    print("------")
+    print("-"*8)
     print(a)
-    print("------")
+    print("-"*8)
+
 
 # Declare a new string
 hello_world: str = "Hello! World"
 print_pattern(hello_world)
 
+
 # Get the length of the string
+print(" ")
 str_len: int = len(hello_world)
-print("Length:")
+print("Length: len(hello_world)")
 print(str_len)
+
+
+##############################
+# Slicing strings
+print(" ")
+print("Slicing strings:")
+
+##############################
+
+
+numbers: str = "1 2 3 4 5 6 7 8"
+print(numbers + " -> " + numbers[0:len(numbers)-1:2])
+
+##############################
+# Iterators
+##############################
+print(" ")
+print("Iterators:")
+
+num: str = None
+
+for num in numbers:
+    if num != " ":
+        print(num)

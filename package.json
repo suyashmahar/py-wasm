@@ -7,7 +7,7 @@
     "build-web": "webpack && cp index.html build/ && cp style.css ./build/",
     "build-cli": "tsc nodestart.ts -s ASSERTIONS=1 --esModuleInterop --moduleResolution node --outDir cli/",
     "build-cli-repl": "tsc node-repl.ts --esModuleInterop --moduleResolution node --outDir cli/",
-    "test": "env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\" }' mocha -r ts-node/register 'tests/**/*.test.ts'"
+    "tests": "env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\" }' mocha -r ts-node/register 'tests/**/*.test.ts'"
   },
   "author": "",
   "license": "ISC",
