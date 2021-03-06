@@ -13,7 +13,6 @@ function stringify(typ: Type, arg: any): string {
     case "none":
       return "None";
     case "str":
-      console.log(`arg: ${arg}`)
       return arg;
     case "class":
       return typ.name;

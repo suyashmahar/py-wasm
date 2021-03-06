@@ -673,7 +673,7 @@ export function codeGenString(expr: Expr, env: envM.GlobalEnv, localParams : Arr
     
     return [
       `(i64.const ${cmn.STR_BI + BigInt(strPtr)}) ;; `+
-	`(${strPtr}) Heap pointer for string '${str}' of length ${strLen}`];
+	`(${strPtr}) Heap pointer for string '${escape(str)}' of length ${strLen}`];
   } else {
     err.internalError();
   }

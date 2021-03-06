@@ -63,9 +63,14 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr {
 	pos: getSourcePos(c, s)
       }
     case "String":
+      const fixedStr = s.substring(c.node.from+1, c.node.to-1)
+	  .replace(/\\t/g, String.fromCharCode(9))  // Horizontal tab
+	  .replace(/\\n/g, String.fromCharCode(10)) // Line feed
+	  .replace(/\\"/g, `"`)
+	  .replace(/\\\\/g, `\\`);
       return {
 	tag: "string",
-	value: s.substring(c.node.from+1, c.node.to-1),
+	value: fixedStr,
 	pos: getSourcePos(c, s)
       }
     case "MemberExpression":

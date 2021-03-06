@@ -55,7 +55,7 @@ export function assertPrint(name: string, source: string, expected: Array<string
   it(name, async () => {
     const repl = new BasicREPL(importObject);
     const result = await repl.run(source);
-    expect(importObject.output.trim().split("\n")).to.deep.eq(expected);
+    expect(importObject.output.split("\n")).to.deep.eq(expected.concat([""]));
   });
 }
 

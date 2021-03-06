@@ -66,39 +66,13 @@ export class BasicREPL {
       
       var iter = off;
       var str = "";
-      var isEscaped = false;
       while (memUint8[iter] != 0) {
 	const nextChar = String.fromCharCode(memUint8[iter]);
-
-	if (isEscaped) {
-	  switch (nextChar) {
-	    case "t":
-	      str = str.concat("    ");
-	      break;
-	    case "\\":
-	      str = str.concat("\\");
-	      break;
-	    case "n":
-	      str = str.concat("\n");
-	      break;
-	    case "\"":
-	      str = str.concat(`"`);
-	      break;
-	    case "'":
-	      str = str.concat(`'`);
-	      break;
-	  }
-	  isEscaped = false;
-	} else if (nextChar == "\\") {
-	  isEscaped = true;
-	} else {
-	  str = str.concat(nextChar);
-	}
+	str = str.concat(nextChar);
 	
 	iter += 1;
       }
 
-      const typ: Type = {tag: "str"};
       importObject.imports.print_txt(str);
 
       return NONE_BI;	  
@@ -135,7 +109,7 @@ export class BasicREPL {
       
       const memBuffer: ArrayBuffer = (importObject as any).js.memory.buffer;
       const memUint8 = new Uint8Array(memBuffer);
-      
+
       var iter = off;
       while (memUint8[iter] != 0) {
 	iter += 1;
