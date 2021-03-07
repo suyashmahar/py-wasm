@@ -32,7 +32,6 @@ export class BasicREPL {
       
     this.importObject.updateTableMap = (env : GlobalEnv) => {
       env.classes.forEach((val, key) => {
-	console.log("setting tableOffset");
         importObject.tableOffset.set(val.tableOff, key);
       })
     };
@@ -154,8 +153,6 @@ export class BasicREPL {
       }
       memUint8[diter] = 0; // Add the final null char
 
-      console.log(`allocated string at ${heapPtr} of length ${newLen}`);
-
       // Return pointer to the new string
       return STR_BI + BigInt(heapPtr);
     };
@@ -248,9 +245,28 @@ export class BasicREPL {
 
       var end = siter + 1;
       var step = 1;
+
+      const getSign  = (arg: any) => { return Number(arg)/Math.abs(Number(arg)); }
+      const arg1Sign = getSign(arg1);
+      var arg2Sign = 1;
+      
+      // Fix out of bound index
+      if (Math.abs(Number(arg1)) > strLen) {
+	arg1 = BigInt(strLen) * BigInt(arg1Sign);
+      }
       
       if (arg2 != NONE_BI) {
-	if (Number(arg2) > 0) {
+	arg2Sign = getSign(arg2);
+	
+	// Fix out of bound index
+	if (Math.abs(Number(arg2)) > strLen) {
+	  arg2 = BigInt(strLen) * BigInt(arg2Sign);
+	}	
+
+	if (arg1Sign == arg2Sign && Number(arg1) > Number(arg2)) {
+	  /* Invalid bound, return empty string */
+	  end = siter;
+	} else if (Number(arg2) > 0) {
 	  end = strOff + Number(arg2);
 	  if (end > strOff + strLen) {
 	    end = strOff + strLen;
@@ -280,7 +296,6 @@ export class BasicREPL {
     };    
     
     if(!importObject.js || this.newlyConstructed) {
-      console.log("Constructing new js object");
       const memory = new WebAssembly.Memory({initial:10, maximum:2000});
       const table = new WebAssembly.Table({element: "anyfunc", initial: 10});
       this.importObject.js = { memory: memory, table: table };
@@ -293,7 +308,7 @@ export class BasicREPL {
       funcs: new Map([['print', { name: "print", members: [NoneT], retType: IntT}],
 		      ['len', { name: "len", members: [StrT], retType: IntT}],
 		     ]),
-      offset: 8,
+      offset: 16,
       classOffset: 0
     };
   }

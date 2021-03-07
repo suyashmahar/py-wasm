@@ -55,6 +55,7 @@ export async function run(source : string, config: any) : Promise<[any, GlobalEn
   importObject.updateTableMap(compiled.newEnv);
 
   var memUint8: Uint8Array = new Uint8Array(importObject.js.memory.buffer);
+  var memUint64 = new BigUint64Array(importObject.js.memory.buffer);
   
   compiled.newEnv.globalStrs.forEach((off, str) => {
     const strLen: number = str.length;
@@ -79,7 +80,7 @@ export async function run(source : string, config: any) : Promise<[any, GlobalEn
     (func $str$mult (import "imports" "str_mult") (param i64) (param i64) (result i64))
 
     (import "js" "memory" (memory 1))
-    (import "js" "table" (table 1 funcref))
+    ;; (import "js" "table" (table 1 funcref))
     (func (export "exported_func") ${returnType}      
       ${compiled.wasmSource}
       ${returnExpr}
@@ -103,10 +104,12 @@ export async function run(source : string, config: any) : Promise<[any, GlobalEn
   }
 
   // Update the heap pointer after execution
-  const heapPtrBuffer = importObject.js.memory.buffer.slice(0, 8);
-  const heapPtrDV = new DataView(heapPtrBuffer, 0, 8);
-  const heapPtr = heapPtrDV.getBigUint64(0, true);
-  compiled.newEnv.offset = Number(heapPtr);
-  
+
+  // const heapPtrBuffer = importObject.js.memory.buffer.slice(0, 8);
+  // const heapPtrDV = new DataView(heapPtrBuffer, 0, 8);
+  // const heapPtr = heapPtrDV.getBigUint64(0, true);
+  // compiled.newEnv.offset = Number(heapPtr);
+  compiled.newEnv.offset = Number(memUint64[0]);
+
   return [result, compiled.newEnv, wasmSource];
 }

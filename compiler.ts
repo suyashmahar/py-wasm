@@ -163,7 +163,7 @@ export function compile(source: string, env: envM.GlobalEnv) : CompileResult {
   const withDefines = augmentEnv(env, ast);
 
   tempHeapPtr = withDefines.offset;
-  tempStrAlloc = new Map();
+  tempStrAlloc = env.globalStrs;
   
   const scratchVar : string = `(local $$last i64)`;
     

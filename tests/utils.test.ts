@@ -20,7 +20,6 @@ before(function () {
 });
 
 export function assert(name: string, source: string, expected: Value) {
-  console.log("asserting");
   it(name, async () => {
     const repl = new BasicREPL(importObject);
     const result = await repl.run(source);
