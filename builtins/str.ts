@@ -2,41 +2,6 @@
 
 import * as cmn from "../common";
 
-export function str_eq(importObject: any) {
-  return (offBigInt1: any, offBigInt2: any): any => {
-    const lower32Mask = ((BigInt(1)<<BigInt(32)) - BigInt(1));
-    const off1: number = Number(offBigInt1 & lower32Mask);
-    const off2: number = Number(offBigInt2 & lower32Mask);
-
-    const memUint8 = importObject.imports.get_uint8_repr();
-    
-    // Copy the first and second strings
-    var siter1: number = off1;
-    var siter2: number = off2;
-
-    var result = true;
-    
-    while (memUint8[siter1] != 0 && memUint8[siter2] != 0) {
-      if (memUint8[siter1] != memUint8[siter2]) {
-	result = false;
-	break;
-      }	
-      siter1 += 1;
-      siter2 += 1;
-    }
-
-    return (result ? cmn.TRUE_BI : cmn.FALSE_BI);
-  };
-}
-
-export function str_neq(importObject: any) {
-  return (offBigInt1: any, offBigInt2: any): any => {
-    const result = importObject.imports.str_eq(offBigInt1, offBigInt2);
-
-    return result == cmn.TRUE_BI ? cmn.FALSE_BI : cmn.TRUE_BI;
-  };
-}
-
 export function str_concat(importObject: any) {
   return (offBigInt1: any, offBigInt2: any): any => {
     const off1: number = Number(offBigInt1 - cmn.STR_BI);
@@ -194,4 +159,51 @@ export function str_slice(importObject: any) {
     // Return pointer to the new string
     return cmn.STR_BI + BigInt(resultOff);
   };    
+}
+
+function str_op(importObject: any, op: any) {
+  return (offBigInt1: any, offBigInt2: any): any => {
+    const lower32Mask = ((BigInt(1)<<BigInt(32)) - BigInt(1));
+    const off1: number = Number(offBigInt1 & lower32Mask);
+    const off2: number = Number(offBigInt2 & lower32Mask);
+
+    const memUint8 = importObject.imports.get_uint8_repr();
+    
+    // Copy the first and second strings
+    var siter1: number = off1;
+    var siter2: number = off2;
+
+    var result = true;
+    
+    while (memUint8[siter1] != 0 && memUint8[siter2] != 0) {
+      if (op(memUint8[siter1], memUint8[siter2])) {	
+	result = false;
+	break;
+      }	
+      siter1 += 1;
+      siter2 += 1;
+    }
+
+    return (result ? cmn.TRUE_BI : cmn.FALSE_BI);
+  };
+}
+
+
+export function str_le(importObject: any) {
+  return str_op(importObject, (arg1:any, arg2:any) => {return arg1 > arg2});
+}
+export function str_lt(importObject: any) {
+  return str_op(importObject, (arg1:any, arg2:any) => {return arg1 >= arg2});
+}
+export function str_ge(importObject: any) {
+  return str_op(importObject, (arg1:any, arg2:any) => {return arg1 < arg2});
+}
+export function str_gt(importObject: any) {
+  return str_op(importObject, (arg1:any, arg2:any) => {return arg1 <= arg2});
+}
+export function str_eq(importObject: any) {
+  return str_op(importObject, (arg1:any, arg2:any) => {return arg1 != arg2});
+}
+export function str_neq(importObject: any) {
+  return str_op(importObject, (arg1:any, arg2:any) => {return arg1 == arg2});
 }

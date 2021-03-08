@@ -28,6 +28,12 @@ describe("String tests", () => {
   assert("str-comparison-inequality-true", `"a" != "b"`, PyBool(true));
   assert("str-comparison-equality-false", `"a" == "b"`, PyBool(false));
   assert("str-comparison-inequality-false", `"a" != "a"`, PyBool(false));
+  
+  assert("str-le-true", `"ab" <= "ab"`, PyBool(true));
+  assert("str-lt-true", `"a" < "b"`, PyBool(true));
+  assert("str-le-false", `"ac" <= "ab"`, PyBool(false));
+  assert("str-lt-false", `"b" < "b"`, PyBool(false));
+  
 
   assert("str-comparison-long-0", `"abcdefabcdef" == "abcdefabcdef"`, PyBool(true));
   assert("str-comparison-slice-0", `"abcdefabcdef"[1:3] == "abcdefabcdef"[1:3]`, PyBool(true));

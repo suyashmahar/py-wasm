@@ -116,10 +116,14 @@ export class BasicREPL {
     
     this.importObject.imports.str_len = builtins_str.str_len(importObject);
     this.importObject.imports.str_concat = builtins_str.str_concat(importObject);
-    this.importObject.imports.str_eq = builtins_str.str_eq(importObject);
-    this.importObject.imports.str_neq = builtins_str.str_neq(importObject);
     this.importObject.imports.str_mult = builtins_str.str_mult(importObject);
     this.importObject.imports.str_slice = builtins_str.str_slice(importObject);
+    this.importObject.imports.str_eq = builtins_str.str_eq(importObject);
+    this.importObject.imports.str_neq = builtins_str.str_neq(importObject);
+    this.importObject.imports.str_lt = builtins_str.str_lt(importObject);
+    this.importObject.imports.str_gt = builtins_str.str_gt(importObject);
+    this.importObject.imports.str_le = builtins_str.str_le(importObject);
+    this.importObject.imports.str_ge = builtins_str.str_ge(importObject);
 
     // Returns the offset to the newly allocated memory region
     this.importObject.imports.malloc = extras.malloc(importObject);
