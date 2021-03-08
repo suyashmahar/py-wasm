@@ -230,25 +230,40 @@ export class BasicREPL {
     }
     
     // "adlkjfs"[1:2:1]
-    this.importObject.imports.str_slice = (str: any, arg1: any, arg2: any, arg3: any): any => {
+    this.importObject.imports.str_slice = (str: any, arg1: any, arg2: any, arg3: any, explicitArgs: any): any => {
       const strOff: number = Number(str - STR_BI);
       const strLen: number = Number(importObject.imports.str_len(str));
-
-      if (Number(arg1) >= strLen || Number(arg1) <= -strLen) {
-	err.idxError({line:0, col:0, len:0}, `Index ${arg1} out of range, string length ${strLen}.`, "");
-      }
-
       const memUint8 = importObject.imports.get_uint8_repr();
 
-      // Copy the first and second strings
+      const getSign  = (arg: any) => { return Number(arg)/Math.abs(Number(arg)); }
+      const arg1Sign = getSign(arg1);
+      const arg2Sign = (arg2 != NONE_BI) ? getSign(arg2) : 1;
+      const arg3Sign = (arg3 != NONE_BI) ? getSign(arg3) : 1;
+      
+      
+      /* Add the missing arguments */
+      if (arg1 == NONE_BI && explicitArgs > 1) {
+	if (arg3Sign == 1) {
+	  arg1 = 0;
+	} else {
+	  arg1 = BigInt(-1);
+	}
+      }
+
+      if (arg2 == NONE_BI && explicitArgs > 1) {
+	if (arg3Sign == 1) {
+	  arg2 = BigInt(strLen);
+	} else {
+	  arg2 = BigInt(0);
+	}
+      } 
+
+      /* Copy the first and second strings */
       var siter: number = strOff + (strLen + Number(arg1))%strLen;
 
       var end = siter + 1;
       var step = 1;
 
-      const getSign  = (arg: any) => { return Number(arg)/Math.abs(Number(arg)); }
-      const arg1Sign = getSign(arg1);
-      var arg2Sign = 1;
       
       // Fix out of bound index
       if (Math.abs(Number(arg1)) > strLen) {
@@ -256,8 +271,6 @@ export class BasicREPL {
       }
       
       if (arg2 != NONE_BI) {
-	arg2Sign = getSign(arg2);
-	
 	// Fix out of bound index
 	if (Math.abs(Number(arg2)) > strLen) {
 	  arg2 = BigInt(strLen) * BigInt(arg2Sign);
@@ -266,7 +279,9 @@ export class BasicREPL {
 	if (arg1Sign == arg2Sign && Number(arg1) > Number(arg2)) {
 	  /* Invalid bound, return empty string */
 	  end = siter;
-	} else if (Number(arg2) > 0) {
+	}
+
+	if (Number(arg2) > 0) {
 	  end = strOff + Number(arg2);
 	  if (end > strOff + strLen) {
 	    end = strOff + strLen;
@@ -277,13 +292,13 @@ export class BasicREPL {
       }
 
       if (arg3 != NONE_BI) {
-	step = Math.abs(Number(arg3));
+	step = Number(arg3);
       }
       
       const resultOff = Number(importObject.imports.malloc(end-siter));
       var diter: number = resultOff;
-
-      while (siter < end) {
+      
+      while ((step > 0 && siter < end) || (step < 0 && siter >= end)) {
 	memUint8[diter] = memUint8[siter];
 	siter += step;
 	diter += 1;

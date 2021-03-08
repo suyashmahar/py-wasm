@@ -12,7 +12,7 @@ import * as compiler from './compiler';
 import { parse } from './parser';
 import { GlobalEnv } from './env';
 import { prettifyWasmSource } from './linter';
-import { NONE_VAL } from './common';
+import { NONE_VAL, dumpMem } from './common';
 
 // NOTE(joe): This is a hack to get the CLI Repl to run. WABT registers a global
 // uncaught exn handler, and this is not allowed when running the REPL
@@ -64,9 +64,9 @@ export async function run(source : string, config: any) : Promise<[any, GlobalEn
       memUint8[iter + off] = str.charCodeAt(iter);
       iter += 1;
     }
-    memUint8[iter] = 0;
+    memUint8[iter+off] = 0;
   });
-  
+
   const wasmSource = `(module
     (func $print$other (import "imports" "print_other") (param i64) (result i64))
     (func $print$obj (import "imports" "print_obj") (param i64) (param i64) (result i64))
@@ -74,7 +74,7 @@ export async function run(source : string, config: any) : Promise<[any, GlobalEn
 
     (func $str$len (import "imports" "str_len") (param i64) (result i64))
     (func $str$concat (import "imports" "str_concat") (param i64) (param i64) (result i64))
-    (func $str$slice (import "imports" "str_slice") (param i64) (param i64) (param i64) (param i64) (result i64))
+    (func $str$slice (import "imports" "str_slice") (param i64) (param i64) (param i64) (param i64) (param i64) (result i64))
     (func $str$eq (import "imports" "str_eq") (param i64) (param i64) (result i64))
     (func $str$neq (import "imports" "str_neq") (param i64) (param i64) (result i64))
     (func $str$mult (import "imports" "str_mult") (param i64) (param i64) (result i64))

@@ -662,7 +662,6 @@ export function codeGenString(expr: Expr, env: envM.GlobalEnv, localParams : Arr
     const str: string = expr.value;
     const strLen: number = expr.value.length + 1; // Extra null character
 
-
     var strPtr = tempHeapPtr;
     if (tempStrAlloc.get(str) == undefined) {
       tempStrAlloc.set(str, tempHeapPtr);
@@ -688,15 +687,20 @@ export function codeGenIntervalExpr(expr: Expr, env: envM.GlobalEnv, source: str
     /* Evaluate all the arguments */
     var args: string[] = []
     var argCnt = 0;
+    var explicitArgs = 0; // Bitarray for each argument 
+
     expr.args.forEach(arg => {
       args = args.concat(codeGenExpr(arg, env, localParams, source, classT));
+      explicitArgs += 1<<argCnt;
       argCnt += 1;
     });
 
     while (argCnt < 3) {
-      args.push(`(i64.const ${cmn.NONE_BI})`);
+      args.push(`(i64.const ${cmn.NONE_BI}) ;; Missing argument replaced with None`);
       argCnt += 1;
     }
+
+    args.push(`(i64.const ${explicitArgs}) ;; Number of argument explicitly specified`);
 
     result = result.concat(args);
     
@@ -710,6 +714,8 @@ export function codeGenIntervalExpr(expr: Expr, env: envM.GlobalEnv, source: str
 
 export function codeGenExpr(expr : Expr, env : envM.GlobalEnv, localParams : Array<Parameter>, source: string, classT: Type = undefined) : Array<string> {
   switch(expr.tag) {
+    case "nop":
+      return [`(i64.const ${cmn.NONE_BI})`];
     case "string":
       return codeGenString(expr, env, localParams, source, classT);
     case "self":

@@ -101,25 +101,34 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr {
 	case ("["):
 	  c.nextSibling();
 
-	  var args: Expr[] = [traverseExpr(c, s)];
+	  var args: Expr[] = [];
+	  var foundArg = false;
 	  
-	  c.nextSibling();
-
 	  while (c.node.type.name != ']') {
-	    c.nextSibling(); // Skip the colon
-	    args.push(traverseExpr(c, s));
-
+	    console.log(`> ${s.substring(c.node.from, c.node.to)}`);
+	    if (s.substring(c.node.from, c.node.to) == ':') {
+	      if (foundArg) {
+	      } else {
+		args.push({tag: "nop", pos: getSourcePos(c, s)});
+	      }
+	      foundArg = false;
+	    } else {
+	      foundArg = true;
+	      args.push(traverseExpr(c, s));
+	    }
 	    c.nextSibling();
 	  }
 
 	  c.parent();
-
-	  return {
+	  
+	  const result: Expr =  {
 	    tag: "intervalExp",
 	    expr: lhsExpr,
 	    pos: pos,
 	    args: args,
 	  }
+
+	  return result;
       }
     case "CallExpression":
       const cExpPos = getSourcePos(c, s);

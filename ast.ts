@@ -43,6 +43,7 @@ export type Stmt =
   | { tag: "for", varName: Name, str: Expr, body: Array<Stmt> }
 
 export type Expr =
+  | { iType?: Type, tag: "nop", pos: Pos }
   | { iType?: Type, tag: "intervalExp", pos: Pos, expr: Expr, args: Expr[] }
   | { iType?: Type, tag: "num", pos: Pos, value: number }
   | { iType?: Type, tag: "self", pos: Pos }
