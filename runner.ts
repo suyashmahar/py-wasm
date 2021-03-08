@@ -67,6 +67,8 @@ export async function run(source : string, config: any) : Promise<[any, GlobalEn
     memUint8[iter+off] = 0;
   });
 
+  dumpMem(memUint8);
+
   const wasmSource = `(module
     (func $print$other (import "imports" "print_other") (param i64) (result i64))
     (func $print$obj (import "imports" "print_obj") (param i64) (param i64) (result i64))

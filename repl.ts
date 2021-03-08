@@ -8,6 +8,9 @@ import { valueToStr, i64ToValue, NONE_BI, STR_BI, TRUE_BI, FALSE_BI } from "./co
 import * as compiler from './compiler';
 import * as err from './error';
 
+import * as builtins_str from './builtins/str';
+import * as extras from './builtins/extras';
+
 interface REPL {
   run(source : string) : Promise<any>;
 }
@@ -103,19 +106,6 @@ export class BasicREPL {
       return arg;      
     };
 
-    this.importObject.imports.str_len = (offBigInt: any): any => {
-      const off: number = Number(offBigInt - STR_BI);
-      
-      const memBuffer: ArrayBuffer = (importObject as any).js.memory.buffer;
-      const memUint8 = new Uint8Array(memBuffer);
-
-      var iter = off;
-      while (memUint8[iter] != 0) {
-	iter += 1;
-      }
-
-      return BigInt(iter - off);
-    };
 
     this.importObject.imports.get_uint8_repr = (): any => {
       const memBuffer: ArrayBuffer = (importObject as any).js.memory.buffer;
@@ -124,191 +114,15 @@ export class BasicREPL {
       return memUint8;
     }
     
-    this.importObject.imports.str_concat = (offBigInt1: any, offBigInt2: any): any => {
-      const off1: number = Number(offBigInt1 - STR_BI);
-      const off2: number = Number(offBigInt2 - STR_BI);
-
-      const len1: number = Number(importObject.imports.str_len(offBigInt1));
-      const len2: number = Number(importObject.imports.str_len(offBigInt2));
-      const newLen = len1 + len2 + 1;
-
-      const heapPtr = Number(importObject.imports.malloc(newLen));
-      const memUint8 = importObject.imports.get_uint8_repr();
-      
-      // Copy the first and second strings
-      var diter: number = heapPtr;
-      var siter: number = off1;
-
-      while (siter < off1 + len1) {
-	memUint8[diter] = memUint8[siter];
-	siter += 1;
-	diter += 1;
-      }
-      
-      siter = off2;
-      while (siter < off2 + len2) {
-	memUint8[diter] = memUint8[siter];
-	siter += 1;
-	diter += 1;
-      }
-      memUint8[diter] = 0; // Add the final null char
-
-      // Return pointer to the new string
-      return STR_BI + BigInt(heapPtr);
-    };
-
-    this.importObject.imports.str_eq = (offBigInt1: any, offBigInt2: any): any => {
-      const lower32Mask = ((BigInt(1)<<BigInt(32)) - BigInt(1));
-      const off1: number = Number(offBigInt1 & lower32Mask);
-      const off2: number = Number(offBigInt2 & lower32Mask);
-
-      const memUint8 = importObject.imports.get_uint8_repr();
-      
-      // Copy the first and second strings
-      var siter1: number = off1;
-      var siter2: number = off2;
-
-      var result = true;
-      
-      while (memUint8[siter1] != 0 && memUint8[siter2] != 0) {
-	if (memUint8[siter1] != memUint8[siter2]) {
-	  result = false;
-	  break;
-	}	
-	siter1 += 1;
-	siter2 += 1;
-      }
-
-      return (result ? TRUE_BI : FALSE_BI);
-    }
-
-    this.importObject.imports.str_neq = (offBigInt1: any, offBigInt2: any): any => {
-      const result = importObject.imports.str_eq(offBigInt1, offBigInt2);
-
-      return result == TRUE_BI ? FALSE_BI : TRUE_BI;
-    }
+    this.importObject.imports.str_len = builtins_str.str_len(importObject);
+    this.importObject.imports.str_concat = builtins_str.str_concat(importObject);
+    this.importObject.imports.str_eq = builtins_str.str_eq(importObject);
+    this.importObject.imports.str_neq = builtins_str.str_neq(importObject);
+    this.importObject.imports.str_mult = builtins_str.str_mult(importObject);
+    this.importObject.imports.str_slice = builtins_str.str_slice(importObject);
 
     // Returns the offset to the newly allocated memory region
-    this.importObject.imports.malloc = (bytes: any): any => {
-      const memBuffer: ArrayBuffer = (importObject as any).js.memory.buffer;
-      const memUint8 = new Uint8Array(memBuffer);
-      const memUint64 = new BigUint64Array(memBuffer);
-      
-      // Get the current heap pointer
-      const heapPtrBuffer = importObject.js.memory.buffer.slice(0, 8);
-      const heapPtrDV = new DataView(heapPtrBuffer, 0, 8);
-      const heapPtr = Number(heapPtrDV.getBigUint64(0, true));
-
-      // Write the new heap pointer
-      memUint64[0] = BigInt(heapPtr + bytes);
-
-      return BigInt(heapPtr);
-    }
-
-    this.importObject.imports.str_mult = (str: any, times: any): any => {
-      const strLen: number = Number(importObject.imports.str_len(str));
-      const strOff: number = Number(str - STR_BI);
-      
-      const newLen: number = strLen * Number(times) + 1;
-
-      const newStr = Number(importObject.imports.malloc(newLen));
-      const memUint8 = importObject.imports.get_uint8_repr();
-      
-      var iter = 0;
-      while (iter < times) {
-
-	var strIter = 0;
-
-	while (strIter < strLen) {
-	  memUint8[newStr + iter*strLen + strIter] = memUint8[strOff + strIter];
-	  strIter += 1;
-	}
-	iter += 1;
-      }
-
-      return BigInt(newStr) + STR_BI;
-    }
-    
-    // "adlkjfs"[1:2:1]
-    this.importObject.imports.str_slice = (str: any, arg1: any, arg2: any, arg3: any, explicitArgs: any): any => {
-      const strOff: number = Number(str - STR_BI);
-      const strLen: number = Number(importObject.imports.str_len(str));
-      const memUint8 = importObject.imports.get_uint8_repr();
-
-      const getSign  = (arg: any) => { return Number(arg)/Math.abs(Number(arg)); }
-      const arg1Sign = getSign(arg1);
-      const arg2Sign = (arg2 != NONE_BI) ? getSign(arg2) : 1;
-      const arg3Sign = (arg3 != NONE_BI) ? getSign(arg3) : 1;
-      
-      
-      /* Add the missing arguments */
-      if (arg1 == NONE_BI && explicitArgs > 1) {
-	if (arg3Sign == 1) {
-	  arg1 = 0;
-	} else {
-	  arg1 = BigInt(-1);
-	}
-      }
-
-      if (arg2 == NONE_BI && explicitArgs > 1) {
-	if (arg3Sign == 1) {
-	  arg2 = BigInt(strLen);
-	} else {
-	  arg2 = BigInt(0);
-	}
-      } 
-
-      /* Copy the first and second strings */
-      var siter: number = strOff + (strLen + Number(arg1))%strLen;
-
-      var end = siter + 1;
-      var step = 1;
-
-      
-      // Fix out of bound index
-      if (Math.abs(Number(arg1)) > strLen) {
-	arg1 = BigInt(strLen) * BigInt(arg1Sign);
-      }
-      
-      if (arg2 != NONE_BI) {
-	// Fix out of bound index
-	if (Math.abs(Number(arg2)) > strLen) {
-	  arg2 = BigInt(strLen) * BigInt(arg2Sign);
-	}	
-
-	if (arg1Sign == arg2Sign && Number(arg1) > Number(arg2)) {
-	  /* Invalid bound, return empty string */
-	  end = siter;
-	}
-
-	if (Number(arg2) > 0) {
-	  end = strOff + Number(arg2);
-	  if (end > strOff + strLen) {
-	    end = strOff + strLen;
-	  }
-	} else {
-	  end = strOff + (strLen + Number(arg2))%strLen;
-	}
-      }
-
-      if (arg3 != NONE_BI) {
-	step = Number(arg3);
-      }
-      
-      const resultOff = Number(importObject.imports.malloc(end-siter));
-      var diter: number = resultOff;
-      
-      while ((step > 0 && siter < end) || (step < 0 && siter >= end)) {
-	memUint8[diter] = memUint8[siter];
-	siter += step;
-	diter += 1;
-      }
-      
-      memUint8[diter] = 0;
-
-      // Return pointer to the new string
-      return STR_BI + BigInt(resultOff);
-    };    
+    this.importObject.imports.malloc = extras.malloc(importObject);
     
     if(!importObject.js || this.newlyConstructed) {
       const memory = new WebAssembly.Memory({initial:10, maximum:2000});

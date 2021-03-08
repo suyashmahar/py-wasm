@@ -9,26 +9,27 @@ import { codeGenOp, codeGenUOp } from "./codegen_operators";
 import { FuncEnv, ClassEnv } from "./env"
 import * as envM from './env';
 import * as cmn from "./common";
+import * as builtins from "./builtins";
 
 // https://learnxinyminutes.com/docs/wasm/
 
 // Store all the functions separately
 
 export var prevFuncs: Array<Array<string>> = [];
-export var funcs : Array<Array<string>> = [];
+export var funcs : Array<Array<string>> = [...builtins.funcs];
 
 var tempHeapPtr: number = 0;
 var tempStrAlloc : Map<string, number> = new Map();
 
 export function reset() {
-  funcs = [];
+  funcs = [...builtins.funcs];
   tempStrAlloc = new Map();
   tempHeapPtr = 0;
   prevFuncs = [];
 }
 
 export function abort() {
-  funcs = [];
+  funcs = [...builtins.funcs];
   tempStrAlloc = new Map();
 }
 
