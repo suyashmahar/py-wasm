@@ -1,11 +1,15 @@
 def print_pattern(lines: int):
-    iter: int = 1
-    temp: int = 1
+    result: str = ""
+    count: int = 1
 
-    while (iter < lines):
-        print(temp)
+    if (lines < 1):
+        print("Error: Number of lines should be a positive integer")
 
-        temp = temp*10 + 1
-        iter = iter + 1
+    while (count < lines):
+        result = result + "1"*count + "\n"
 
-print_pattern(10)
+        count = count + 1
+
+    print(result)
+
+print_pattern(30)

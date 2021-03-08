@@ -23,11 +23,12 @@ print(str_len)
 print(" ")
 print("Slicing strings:")
 
-##############################
-
-
 numbers: str = "1 2 3 4 5 6 7 8"
-print(numbers + " -> " + numbers[0:len(numbers)-1:2])
+print(numbers[0:len(numbers):2])
+
+# Advanced slicing
+print(numbers[::2])
+##############################
 
 ##############################
 # Iterators
