@@ -24,6 +24,7 @@ export function assert(name: string, source: string, expected: Value) {
     const repl = new BasicREPL(importObject);
     const result = await repl.run(source);
     expect(result[0]).to.deep.eq(expected);
+    repl.destroy();
   });
 }
 

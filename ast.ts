@@ -31,6 +31,7 @@ export type Function = { pos: Pos, name: Name, parametersPos: Pos, parameters: A
 
 export type Stmt =
   | { tag: "comment", pos: Pos }
+  | { tag: "break", pos: Pos} 
   | { tag: "pass", pos: Pos }
   | { tag: "func", content: Function }
   | { tag: "define", pos: Pos, name: Name, staticType: Type, value: Expr }

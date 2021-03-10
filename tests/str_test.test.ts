@@ -24,16 +24,37 @@ describe("String tests", () => {
   assert("str-len-0", `a:str = "12345678"\nlen(a)`, PyInt(8));
   assert("str-len-1", `${initStrs}\nlen(t0)`, PyInt(6));
 
-  assert("str-comparison-equality-true", `"a" == "a"`, PyBool(true));
-  assert("str-comparison-inequality-true", `"a" != "b"`, PyBool(true));
-  assert("str-comparison-equality-false", `"a" == "b"`, PyBool(false));
-  assert("str-comparison-inequality-false", `"a" != "a"`, PyBool(false));
+  assert("str-comparison-equality-true", `"ab" == "ab"`, PyBool(true));
+  assert("str-comparison-inequality-true", `"ab" != "bb"`, PyBool(true));
+  assert("str-comparison-equality-false", `"ab" == "bb"`, PyBool(false));
+  assert("str-comparison-inequality-false", `"aasdf" != "aasdf"`, PyBool(false));
   
   assert("str-le-true", `"ab" <= "ab"`, PyBool(true));
   assert("str-lt-true", `"a" < "b"`, PyBool(true));
   assert("str-le-false", `"ac" <= "ab"`, PyBool(false));
   assert("str-lt-false", `"b" < "b"`, PyBool(false));
+  assert("str-gt-false", `"abc" > "bbc"`, PyBool(false));
+
+  assert("str-relational-operator-0", `${initStrs}\nt0 == t0`, PyBool(true));
+  assert("str-relational-operator-1", `${initStrs}\nt0 != t0`, PyBool(false));
+  assert("str-relational-operator-2", `${initStrs}\nt0  < t0`, PyBool(false));
+  assert("str-relational-operator-3", `${initStrs}\nt0  > t0`, PyBool(false));
+  assert("str-relational-operator-4", `${initStrs}\nt0 <= t0`, PyBool(true));
+  assert("str-relational-operator-5", `${initStrs}\nt0 >= t0`, PyBool(true));
   
+  assert("str-relational-operator-6", `${initStrs}\nt1 == t0`, PyBool(false));
+  assert("str-relational-operator-7", `${initStrs}\nt1 != t0`, PyBool(true));
+  assert("str-relational-operator-8", `${initStrs}\nt1  < t0`, PyBool(false));
+  assert("str-relational-operator-9", `${initStrs}\nt1  > t0`, PyBool(true));
+  assert("str-relational-operator-10", `${initStrs}\nt1 <= t0`, PyBool(false));
+  assert("str-relational-operator-11", `${initStrs}\nt1 >= t0`, PyBool(true));
+  
+  assert("str-relational-operator-12", `${initStrs}\nt0 == t1`, PyBool(false));
+  assert("str-relational-operator-13", `${initStrs}\nt0 != t1`, PyBool(true));
+  assert("str-relational-operator-14", `${initStrs}\nt0  < t1`, PyBool(true));
+  assert("str-relational-operator-15", `${initStrs}\nt0  > t1`, PyBool(false));
+  assert("str-relational-operator-16", `${initStrs}\nt0 <= t1`, PyBool(true));
+  assert("str-relational-operator-17", `${initStrs}\nt0 >= t1`, PyBool(false));
 
   assert("str-comparison-long-0", `"abcdefabcdef" == "abcdefabcdef"`, PyBool(true));
   assert("str-comparison-slice-0", `"abcdefabcdef"[1:3] == "abcdefabcdef"[1:3]`, PyBool(true));

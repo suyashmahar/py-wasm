@@ -342,7 +342,7 @@ function codeGenMemberExpr(expr: Expr, env: envM.GlobalEnv, source: string, loca
     result = result.concat(codeGenExpr(varExpr, env, localParams, source, classT));
 
     /* Add the field offset */
-    var result = codeGenExpr(varExpr, env, localParams, source, classT);
+    // result = result.concat(codeGenExpr(varExpr, env, localParams, source, classT));
 
     result = result.concat([`(call $runtime_check$assert_non_none) ;; Check for None `,
 			    `(i64.const ${getFieldOffset(className, memName, env)}) ;; Offset for field ${memName}`,
@@ -436,6 +436,8 @@ codeGenForLoop(stmt: Stmt, env : envM.GlobalEnv, source: string, localParams: Ar
 
 function codeGen(stmt: Stmt, env : envM.GlobalEnv, source: string, localParams: Array<Parameter> = [], classT: Type = undefined) : Array<string> {
   switch(stmt.tag) {
+    case "break":
+      return [`(br 1)`];
     case "class":
       return codeGenClass(stmt, env, source, classT);
     case "for":
@@ -597,7 +599,9 @@ function codeGenFuncCall(expr: Expr, env: envM.GlobalEnv, localParams: Array<Par
       	result = argStmts.concat([`(call $print$other)`, ``]);
       } else if (expr.name.name == "len") {
 	result = argStmts.concat([`(call $str$len)`, ``]);
-      }else {
+      } else if (expr.name.name == "str" && expr.args[0].iType == IntT) {
+	result = argStmts.concat([`(call $str$fromInt)`, ``]);
+      } else {
 	result = argStmts.concat([`(call $${expr.name.name})`, ``]);
       }
     } else {

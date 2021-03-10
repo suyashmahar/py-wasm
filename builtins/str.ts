@@ -2,6 +2,23 @@
 
 import * as cmn from "../common";
 
+export function str_fromInt(importObject: any): any {
+  return (num: any): any => {
+    const jsStr = Number(num).toString();
+    const resultStr = Number(importObject.imports.malloc(jsStr.length + 1));
+    const memUint8 = importObject.imports.get_uint8_repr();
+    
+    var iter = 0;
+    while (iter < jsStr.length) {
+      memUint8[iter + resultStr] = jsStr.charCodeAt(iter);
+      iter += 1;
+    }
+    memUint8[iter + resultStr] = 0;
+
+    return cmn.STR_BI + BigInt(resultStr);
+  };
+}
+
 export function str_concat(importObject: any) {
   return (offBigInt1: any, offBigInt2: any): any => {
     const off1: number = Number(offBigInt1 - cmn.STR_BI);
@@ -147,9 +164,11 @@ export function str_slice(importObject: any) {
     
     const resultOff = Number(importObject.imports.malloc(end-siter));
     var diter: number = resultOff;
-    
-    while ((step > 0 && siter < end) || (step < 0 && siter >= end)) {
+
+    var result = "";
+    while ((step > 0 && siter < end) || (step < 0 && siter > end)) {
       memUint8[diter] = memUint8[siter];
+      result = result + String.fromCharCode(memUint8[diter]);
       siter += step;
       diter += 1;
     }
@@ -161,8 +180,18 @@ export function str_slice(importObject: any) {
   };    
 }
 
-function str_op(importObject: any, op: any) {
+function str_op(importObject: any, op: any, start: any) {
   return (offBigInt1: any, offBigInt2: any): any => {
+    var singleChar1 = false, singleChar2 = false;
+    
+    if (offBigInt1 >> BigInt(32) == cmn.CHAR_BI >> BigInt(32)) {
+      singleChar1 = true;
+    }
+
+    if (offBigInt2 >> BigInt(32) == cmn.CHAR_BI >> BigInt(32)) {
+      singleChar2 = true;
+    }
+    
     const lower32Mask = ((BigInt(1)<<BigInt(32)) - BigInt(1));
     const off1: number = Number(offBigInt1 & lower32Mask);
     const off2: number = Number(offBigInt2 & lower32Mask);
@@ -173,37 +202,46 @@ function str_op(importObject: any, op: any) {
     var siter1: number = off1;
     var siter2: number = off2;
 
-    var result = true;
-    
-    while (memUint8[siter1] != 0 && memUint8[siter2] != 0) {
-      if (op(memUint8[siter1], memUint8[siter2])) {	
-	result = false;
-	break;
-      }	
+    var str1 = "";
+    var str2 = "";
+
+    while (memUint8[siter1] != 0) {
+      str1 = str1 + String.fromCharCode(memUint8[siter1]);
       siter1 += 1;
+
+      if (singleChar1)
+	break;
+    }
+    
+    while (memUint8[siter2] != 0) {
+      str2 = str2 + String.fromCharCode(memUint8[siter2]);
       siter2 += 1;
+      
+      if (singleChar2)
+	break;
     }
 
-    return (result ? cmn.TRUE_BI : cmn.FALSE_BI);
+    return (op(str1, str2) ? cmn.TRUE_BI : cmn.FALSE_BI);
   };
 }
 
 
 export function str_le(importObject: any) {
-  return str_op(importObject, (arg1:any, arg2:any) => {return arg1 > arg2});
+  return str_op(importObject, (arg1:any, arg2:any) => {return arg1 <= arg2}, true);
 }
 export function str_lt(importObject: any) {
-  return str_op(importObject, (arg1:any, arg2:any) => {return arg1 >= arg2});
+  return str_op(importObject, (arg1:any, arg2:any) => {return arg1 < arg2}, true);
 }
 export function str_ge(importObject: any) {
-  return str_op(importObject, (arg1:any, arg2:any) => {return arg1 < arg2});
+  return str_op(importObject, (arg1:any, arg2:any) => {return arg1 >= arg2}, true);
 }
 export function str_gt(importObject: any) {
-  return str_op(importObject, (arg1:any, arg2:any) => {return arg1 <= arg2});
+  return str_op(importObject, (arg1:any, arg2:any) => {return arg1 > arg2}, false);
 }
 export function str_eq(importObject: any) {
-  return str_op(importObject, (arg1:any, arg2:any) => {return arg1 != arg2});
+  return str_op(importObject, (arg1:any, arg2:any) => {return arg1 == arg2}, true);
 }
 export function str_neq(importObject: any) {
-  return str_op(importObject, (arg1:any, arg2:any) => {return arg1 == arg2});
+  return str_op(importObject, (arg1:any, arg2:any) => {return arg1 != arg2}, false);
 }
+

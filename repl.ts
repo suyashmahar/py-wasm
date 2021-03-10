@@ -6,6 +6,7 @@ import { GlobalEnv } from "./env";
 import { Value, Type, BoolT, IntT, NoneT, StrT } from "./ast";
 import { valueToStr, i64ToValue, NONE_BI, STR_BI, TRUE_BI, FALSE_BI } from "./common";
 import * as compiler from './compiler';
+import * as tc from './tc';
 import * as err from './error';
 
 import * as builtins_str from './builtins/str';
@@ -22,6 +23,7 @@ export class BasicREPL {
   newlyConstructed: boolean
   constructor(importObject : any) {
     compiler.reset();
+    tc.reset();
     this.newlyConstructed = true;
     this.importObject = importObject;
     this.importObject.nameMap = new Array<string>();
@@ -124,14 +126,14 @@ export class BasicREPL {
     this.importObject.imports.str_gt = builtins_str.str_gt(importObject);
     this.importObject.imports.str_le = builtins_str.str_le(importObject);
     this.importObject.imports.str_ge = builtins_str.str_ge(importObject);
+    this.importObject.imports.str_fromInt = builtins_str.str_fromInt(importObject);
 
     // Returns the offset to the newly allocated memory region
     this.importObject.imports.malloc = extras.malloc(importObject);
     
     if(!importObject.js || this.newlyConstructed) {
-      const memory = new WebAssembly.Memory({initial:10, maximum:2000});
-      const table = new WebAssembly.Table({element: "anyfunc", initial: 10});
-      this.importObject.js = { memory: memory, table: table };
+      const memory = new WebAssembly.Memory({initial:1, maximum:10});
+      this.importObject.js = { memory: memory };
       this.newlyConstructed = false;
     }
     this.currentEnv = {
@@ -140,6 +142,7 @@ export class BasicREPL {
       classes: new Map(),
       funcs: new Map([['print', { name: "print", members: [NoneT], retType: IntT}],
 		      ['len', { name: "len", members: [StrT], retType: IntT}],
+		      ['str', { name: "str", members: [IntT], retType: StrT}],
 		     ]),
       offset: 16,
       classOffset: 0
@@ -153,6 +156,16 @@ export class BasicREPL {
     console.log("returning");
     console.log(result);
     return [result, compiled];
+  }
+
+  destroy() {
+    delete this.importObject.js.memory;
+    delete this.importObject.imports.str_eq;
+    delete this.importObject.imports.str_neq;
+    delete this.importObject.imports.str_le;
+    delete this.importObject.imports.str_lt;
+    delete this.importObject.imports.str_ge;
+    delete this.importObject.imports.str_gt;
   }
 
   async tc(source : string) : Promise<Type> {

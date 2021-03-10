@@ -399,6 +399,8 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt {
 	tag: "comment",
 	pos: getSourcePos(c, s)
       };
+    case "BreakStatement":
+      return { tag: "break", pos: getSourcePos(c, s) };
     case "PassStatement":
       return { tag: "pass", pos: getSourcePos(c, s) };
     case "ClassDefinition":

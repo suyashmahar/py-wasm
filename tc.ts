@@ -7,6 +7,11 @@ import { tr, eqT, neqT, canAssignNone } from "./common"
 
 export type EnvType = Record<string, Type>;
 export var env : EnvType = {};
+export var variableStack: Array<Array<[string, Type]>> = undefined;
+
+export function reset() {
+  variableStack = undefined;
+}
 
 function assert_itype(expr: Expr): Expr {
   if (expr.iType == undefined) {
@@ -120,6 +125,8 @@ tc_class(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvTy
     var foundCtor = false;
     var nameMap: Record<string, Pos> = {}
 
+    pushFrame();
+    
     /* Type check variable declarations */
     stmt.body.iVars = stmt.body.iVars.map(ivar => {
       if (ivar.tag == "define") {
@@ -138,6 +145,8 @@ tc_class(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvTy
 	  typeError(ivar.pos, `Variable cannot be of type ${tr(ivar.staticType)}.`, source);
 	}
 
+	pushVar(ivar.name.str, ivar.staticType);
+	
 	return ivar;
       }
     });
@@ -177,6 +186,8 @@ tc_class(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvTy
       return f;
     });
 
+    popFrame();
+
     return [stmt, {tag: "class", name: stmt.name.str}];
   } else {
     internalError();
@@ -192,9 +203,14 @@ tc_func(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvTyp
 	funEnv[s.name.str] = s.staticType;
       }
     });
-    
-    stmt.content.parameters.forEach(param => { funEnv[param.name] = param.type; });
 
+    pushFrame(); // Create a new frame for this function's body
+
+    stmt.content.parameters.forEach(param => {
+      funEnv[param.name] = param.type;
+      pushVar(param.name, param.type);
+    });
+    
     // TODO: Add support for checking for return statements in all the possible paths
     
     stmt.content.body = stmt.content.body.map(s => {
@@ -213,6 +229,8 @@ tc_func(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvTyp
 
       return s;
     });
+
+    popFrame(); // We're done with this function's variables
 
     return [stmt, NoneT];
   } else {
@@ -236,6 +254,8 @@ tc_stmt(stmt: Stmt, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvTyp
       return [stmt, NoneT];
     case "define":
       const rhsTypeExpr = tc_expr(stmt.value, source, gblEnv, funEnv, classEnv);
+
+      pushVar(stmt.name.str, stmt.staticType);
 
       stmt.value = rhsTypeExpr[0];
       
@@ -425,6 +445,10 @@ tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvTy
       return [expr, NoneT];
       
     case "id":
+      if (!canAccess(expr.name)) {
+	scopeError(expr.pos, `Variable ${expr.name} was not defined in the current scope`, source);
+      }
+      
       if (funEnv[expr.name] != undefined) {
 	expr.iType = funEnv[expr.name];
 	return [expr, expr.iType];	
@@ -574,6 +598,54 @@ tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvTy
       expr.iType = tc_binExp(expr.pos, op, leftType, rightType, source);
       
       return [expr, expr.iType];
+  }
+}
+
+export function
+canAccess(name: string) {
+  var found = false;
+
+  if (variableStack != undefined) {
+    variableStack.forEach(stackE => {
+      stackE.forEach(entry => {
+	if (entry[0] == name) {
+	  found = true;
+	  return;
+	}
+      });
+      if (found) {
+	return;
+      }
+    });
+  }
+  return found;
+}
+
+export function
+pushVar(name: string, type: Type) {
+  const entry: [string, Type] = [name, type];
+  
+  if (variableStack == undefined || variableStack[0] == undefined) {
+    variableStack = [[entry]];
+  } else {
+    variableStack[variableStack.length-1].push(entry);
+  }
+}
+
+export function
+pushFrame() {
+  const dummyEntry: [string, Type] = ["$$$$", IntT];
+  if (variableStack == undefined || variableStack[0] == undefined) {
+    variableStack = [[dummyEntry]];
+  } else  {
+    variableStack.push([dummyEntry]);
+  }
+}
+
+export function
+popFrame() {
+  if (variableStack != undefined) {
+    variableStack.pop();
   }
 }
 

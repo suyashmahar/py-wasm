@@ -5,7 +5,7 @@ import { assert, asserts, assertPrint, assertTCFail, assertTC, assertFail } from
 
 const initStrs = `t0: str = "Hello!"\nt1: str = "World"\nnumbers: str = "1 2 3 4 5 6 7 8"`;
 
-describe("str-slice-tests", () => {
+describe("String slicing tests", () => {
   const ironPythonTestStr = `x:str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"`;
   assert("iron-python-test-suite-0", `${ironPythonTestStr}\nx[10] == "k"`, PyBool(true));
   assert("iron-python-test-suite-1", `${ironPythonTestStr}\nx[20] == "u"`, PyBool(true));
@@ -51,7 +51,7 @@ describe("str-slice-tests", () => {
   assertPrint("slice-range-var", `${initStrs}\nt2: str = t0 + " " + t1\nprint(t2[3:5])`, [`lo`]);
 
   assertPrint("slice-range-step", `nums: str = "1 2 3 4 5 6"\nprint(nums[0:len(nums):2])`, [`123456`]);
-  assertPrint("slice-range-step-neg", `nums: str = "123456"\nprint(nums[-1:0:-1])`, [`654321`]);
+  assertPrint("slice-range-step-neg", `nums: str = "123456"\nprint(nums[-1:0:-1])`, [`65432`]);
 
   assertPrint("slice-single-neg-0", `${initStrs}\nprint(numbers[-1])`, [`8`]);
   assertPrint("slice-single-neg-1", `${initStrs}\nprint(numbers[-2])`, [` `]);
