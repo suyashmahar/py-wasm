@@ -162,7 +162,7 @@ export function str_slice(importObject: any) {
       step = Number(arg3);
     }
     
-    const resultOff = Number(importObject.imports.malloc(end-siter));
+    const resultOff = Number(importObject.imports.malloc(end-siter+1));
     var diter: number = resultOff;
 
     var result = "";
@@ -174,6 +174,8 @@ export function str_slice(importObject: any) {
     }
     
     memUint8[diter] = 0;
+
+    // console.warn(`Slicing result: ${result} at offset ${resultOff}`);
 
     // Return pointer to the new string
     return cmn.STR_BI + BigInt(resultOff);
@@ -205,6 +207,8 @@ function str_op(importObject: any, op: any, start: any) {
     var str1 = "";
     var str2 = "";
 
+    // cmn.dumpMem(memUint8);
+    
     while (memUint8[siter1] != 0) {
       str1 = str1 + String.fromCharCode(memUint8[siter1]);
       siter1 += 1;
@@ -220,6 +224,8 @@ function str_op(importObject: any, op: any, start: any) {
       if (singleChar2)
 	break;
     }
+
+    // console.warn(`Comparing strings |${str1}| with |${str2}|`);
 
     return (op(str1, str2) ? cmn.TRUE_BI : cmn.FALSE_BI);
   };
