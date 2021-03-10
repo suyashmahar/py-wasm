@@ -251,3 +251,36 @@ export function str_neq(importObject: any) {
   return str_op(importObject, (arg1:any, arg2:any) => {return arg1 != arg2}, false);
 }
 
+export function str_transform_op(importObject: any, charop: any) {
+  return (str: any): any => {
+    const strLen: number = Number(importObject.imports.str_len(str));
+    const strOff: number = Number(str - cmn.STR_BI);
+    
+    const newLen: number = strLen + 1;
+
+    const newStr = Number(importObject.imports.malloc(newLen));
+    const memUint8 = importObject.imports.get_uint8_repr();
+    
+    var siter = strOff;
+    var diter = newStr;
+
+    while (memUint8[siter] != 0) {
+      memUint8[diter] = charop(String.fromCharCode(memUint8[siter])).charCodeAt(0);
+      siter += 1;
+      diter += 1;
+    }
+
+    memUint8[siter] = 0;
+
+    return BigInt(newStr) + cmn.STR_BI;
+  };
+}
+
+export function str_upper(importObject: any) {
+  return str_transform_op(importObject, (str: string): string => {return str.toUpperCase()});
+}
+
+export function str_lower(importObject: any) {
+  return str_transform_op(importObject, (str: string): string => {return str.toLowerCase()});
+}
+

@@ -523,6 +523,57 @@ tc_expr(expr : Expr, source: string, gblEnv: GlobalEnv, funEnv: EnvType = <EnvTy
 	      });
 	    }
 	  }
+	} else if (firstPart.tag == "str") {
+	  retType = StrT;
+
+	  // TODO: Create an actual class for this stuff
+	  
+	  /* Typecheck argument count */
+	  var expectedArgCnt = 1
+	  var argTypes: Array<Type> = []
+	  const gotArgCnt = expr.args.length;
+	  
+	  switch (memberFunName) {
+	    case "startswith":
+	    case "endswith":
+	      expectedArgCnt = 1;
+	      argTypes = [NoneT, StrT];
+	      break;
+	    case "upper":
+	    case "lower":
+	      expectedArgCnt = 0;
+	      argTypes = [NoneT];
+	      break;
+	    default:
+	      scopeError(callExpr.member.pos, `Member function ${memberFunName} not available for str`, source);
+	  }
+
+	  if (expectedArgCnt != gotArgCnt) {
+	    argError(expr.prmPos, `Expected ${expectedArgCnt}, got ${gotArgCnt} arguments.`,
+		     source);
+	  }
+
+	  /* Typecheck argument's type */
+	  var prmIter = 0;
+	  expr.args = expr.args.map(arg => {
+	    var retVal = undefined
+	    // if (prmIter != 0) { /* Skip the first argument which is self for memExp */
+	    const gotArgTypeExpr = tc_expr(arg, source, gblEnv, funEnv, classEnv);
+	    
+	    const expArgType: Type = argTypes[prmIter+1];
+	    const gotArgType: Type = gotArgTypeExpr[1];
+	    if (neqT(expArgType, gotArgType)) {
+	      typeError(arg.pos, `Function ${String}.${memberFunName}() expects its `
+		+`argument at pos ${prmIter} to be of type ${tr(expArgType)}, `
+		+`got ${tr(gotArgType)}.`, source);
+	    }
+	    
+	    retVal = gotArgTypeExpr[0];
+	    
+	    prmIter += 1;
+	    
+	    return assert_itype(retVal);
+	  });
 	} else {
 	  typeError(callExpr.pos, `Cannot use dot access using function with expression of `
 	    +`type ${callExpr.tag}`, source);

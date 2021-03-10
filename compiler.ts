@@ -9,26 +9,27 @@ import { codeGenOp, codeGenUOp } from "./codegen_operators";
 import { FuncEnv, ClassEnv } from "./env"
 import * as envM from './env';
 import * as cmn from "./common";
+import * as builtins from "./builtins";
 
 // https://learnxinyminutes.com/docs/wasm/
 
 // Store all the functions separately
 
 export var prevFuncs: Array<Array<string>> = [];
-export var funcs : Array<Array<string>> = [];
+export var funcs : Array<Array<string>> = [...builtins.funcs];
 
 var tempHeapPtr: number = 0;
 var tempStrAlloc : Map<string, number> = new Map();
 
 export function reset() {
-  funcs = [];
+  funcs = [...builtins.funcs];
   tempStrAlloc = new Map();
   tempHeapPtr = 0;
   prevFuncs = [];
 }
 
 export function abort() {
-  funcs = [];
+  funcs = [...builtins.funcs];
   tempStrAlloc = new Map();
 }
 
@@ -754,8 +755,18 @@ export function codeGenExpr(expr : Expr, env : envM.GlobalEnv, localParams : Arr
 	  result.push(`(i64.const ${cmn.PTR_VAL})`);
 	  result.push(`(i64.sub)`);
 	  return result.concat(codeGenFuncCall(fCallAug, env, localParams, source, classT));
+	} else if (className.tag == "str") {
+	  const fCallAug: Expr = {
+	    tag: "funcCall",
+	    name: {tag: "id", pos: expr.name.pos, name: `str$${expr.name.member.str}`},
+	    pos: expr.pos,
+	    prmPos: expr.prmPos,
+	    prmsPosArr: expr.prmsPosArr,
+	    args: expr.args
+	  }
+	  return result.concat(codeGenFuncCall(fCallAug, env, localParams, source, classT));  
 	} else {
-	  err.internalError()
+	  err.internalError();
 	}
       } else {
 	err.internalError();

@@ -85,6 +85,8 @@ export async function run(source : string, config: any) : Promise<[any, GlobalEn
     (func $str$ge (import "imports" "str_ge") (param i64) (param i64) (result i64))
     (func $str$gt (import "imports" "str_gt") (param i64) (param i64) (result i64))
     (func $str$fromInt (import "imports" "str_fromInt") (param i64) (result i64))
+    (func $str$upper (import "imports" "str_upper") (param i64) (result i64))
+    (func $str$lower (import "imports" "str_lower") (param i64) (result i64))
 
     (import "js" "memory" (memory 1))
     ;; (import "js" "table" (table 1 funcref))
